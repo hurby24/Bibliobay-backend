@@ -58,6 +58,5 @@ export async function validateCaptcha(
   });
 
   const outcome = (await result.json()) as CaptchaResponse;
-  console.log(outcome["error-codes"]);
   return outcome.success;
 }
