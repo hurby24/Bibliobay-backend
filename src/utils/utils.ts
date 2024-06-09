@@ -50,7 +50,6 @@ export async function validateCaptcha(
   formData.append("response", token);
   formData.append("remoteip", ip);
 
-  console.log(token, secretKey, ip);
   const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
   const result = await fetch(url, {
     body: formData,

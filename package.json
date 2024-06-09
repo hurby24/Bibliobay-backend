@@ -12,6 +12,7 @@
     "drizzle-orm": "^0.30.10",
     "hono": "^4.3.7",
     "http-status": "^1.7.4",
+    "nanoid": "^5.0.7",
     "oslo": "^1.2.0",
     "space-slug": "^2.0.2",
     "uuid": "^9.0.1",

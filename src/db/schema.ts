@@ -3,13 +3,13 @@ import {
   varchar,
   text,
   boolean,
-  uuid,
   timestamp,
   serial,
+  char,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey(),
+  id: char("id", { length: 21 }).primaryKey(), // Ensure this is char
   username: varchar("username", { length: 25 }).unique().notNull(),
   email: varchar("email", { length: 200 }).unique().notNull(),
   bio: varchar("bio", { length: 255 }),
@@ -22,13 +22,13 @@ export const users = pgTable("users", {
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const email_verifaction_codes = pgTable("email_verifaction_codes", {
+export const email_verification_codes = pgTable("email_verification_codes", {
   id: serial("id").primaryKey(),
   code: varchar("code", { length: 6 }).notNull(),
-  user_id: uuid("user_id")
+  user_id: char("user_id", { length: 21 })
     .notNull()
     .unique()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade" }),
   email: varchar("email", { length: 200 }).notNull().unique(),
   expires_at: timestamp("expires_at").notNull(),
 });

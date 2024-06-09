@@ -1,7 +1,7 @@
 import { createDatabaseConnection } from "../db/connection";
 import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
 import { spaceSlug, verb, digits, noun } from "space-slug";
@@ -9,7 +9,7 @@ import { spaceSlug, verb, digits, noun } from "space-slug";
 export const CreateUser = async (email: string, databaseConfig: string) => {
   let result;
   const db = await createDatabaseConnection(databaseConfig);
-  const id = uuidv4();
+  const id = nanoid();
   const username = spaceSlug([verb(1), noun(1), digits(5)], {
     separator: "-",
     cleanString(word) {

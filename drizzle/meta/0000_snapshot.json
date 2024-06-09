@@ -1,11 +1,11 @@
 {
-  "id": "cfbc4b93-938d-4d1c-8253-721fbc9f4e1e",
+  "id": "3e2cf5a7-aeb9-40d2-a800-c8325e1aa7b8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "6",
   "dialect": "postgresql",
   "tables": {
-    "public.email_verifaction_codes": {
-      "name": "email_verifaction_codes",
+    "public.email_verification_codes": {
+      "name": "email_verification_codes",
       "schema": "",
       "columns": {
         "id": {
@@ -22,7 +22,7 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "uuid",
+          "type": "char(21)",
           "primaryKey": false,
           "notNull": true
         },
@@ -41,9 +41,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "email_verifaction_codes_user_id_users_id_fk": {
-          "name": "email_verifaction_codes_user_id_users_id_fk",
-          "tableFrom": "email_verifaction_codes",
+        "email_verification_codes_user_id_users_id_fk": {
+          "name": "email_verification_codes_user_id_users_id_fk",
+          "tableFrom": "email_verification_codes",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -51,21 +51,21 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "email_verifaction_codes_user_id_unique": {
-          "name": "email_verifaction_codes_user_id_unique",
+        "email_verification_codes_user_id_unique": {
+          "name": "email_verification_codes_user_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "user_id"
           ]
         },
-        "email_verifaction_codes_email_unique": {
-          "name": "email_verifaction_codes_email_unique",
+        "email_verification_codes_email_unique": {
+          "name": "email_verification_codes_email_unique",
           "nullsNotDistinct": false,
           "columns": [
             "email"
@@ -79,7 +79,7 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "char(21)",
           "primaryKey": true,
           "notNull": true
         },
@@ -132,7 +132,7 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "now()"
         },
         "update_at": {
           "name": "update_at",
@@ -145,7 +145,7 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
+          "default": "now()"
         }
       },
       "indexes": {},

@@ -1,5 +1,5 @@
 import { createDatabaseConnection } from "../db/connection";
-import { email_verifaction_codes } from "../db/schema";
+import { email_verification_codes } from "../db/schema";
 import { generateRandomString, alphabet } from "oslo/crypto";
 import { createDate, TimeSpan, isWithinExpirationDate } from "oslo";
 import httpStatus from "http-status";
@@ -110,8 +110,8 @@ export const sessionCookie = async (expires_in: number) => {
 export const createOTP = async (user: any, databaseConfig: string) => {
   const db = await createDatabaseConnection(databaseConfig);
   await db
-    .delete(email_verifaction_codes)
-    .where(eq(email_verifaction_codes.user_id, user.id));
+    .delete(email_verification_codes)
+    .where(eq(email_verification_codes.user_id, user.id));
   let result;
   const code = generateRandomString(6, alphabet("0-9"));
   const email_verifaction_code = {
@@ -122,7 +122,7 @@ export const createOTP = async (user: any, databaseConfig: string) => {
   };
   try {
     result = await db
-      .insert(email_verifaction_codes)
+      .insert(email_verification_codes)
       .values(email_verifaction_code)
       .returning();
   } catch (error) {
@@ -143,8 +143,8 @@ export const verifyOTP = async (
   const db = await createDatabaseConnection(databaseConfig);
   const verification = await db
     .select()
-    .from(email_verifaction_codes)
-    .where(eq(email_verifaction_codes.user_id, user_id));
+    .from(email_verification_codes)
+    .where(eq(email_verification_codes.user_id, user_id));
   if (verification.length === 0) {
     return false;
   }
