@@ -10,16 +10,16 @@ import { setSignedCookie, getSignedCookie, setCookie } from "hono/cookie";
 import { createCsrfToken } from "../utils/csrftoken";
 import { sendOtpEmail } from "../services/email.service";
 import { formatUserAgent, validateCaptcha } from "../utils/utils";
+import { Redis } from "@upstash/redis/cloudflare";
 
 const authRoute = new Hono<Environment>();
 
 authRoute.post("/signup", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID != null) {
-    const session = await sessionService.validSession(
-      sessionID.toString(),
-      c.env.userSessionsKV
-    );
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
     if (session != null) {
       throw new ApiError(httpStatus.BAD_REQUEST, "User already logged in");
     }
@@ -40,7 +40,7 @@ authRoute.post("/signup", async (c) => {
   const user = await CreateUser(email, c.env.DATABASE_URL);
   const session = await sessionService.CreateSession(
     user.id,
-    c.env.userSessionsKV,
+    { Bindings: c.env },
     true
   );
   let cookieData = await sessionService.sessionCookie(1);
@@ -67,10 +67,9 @@ authRoute.post("/signup", async (c) => {
 authRoute.post("/login", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID != null) {
-    const session = await sessionService.validSession(
-      sessionID.toString(),
-      c.env.userSessionsKV
-    );
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
     if (session != null) {
       throw new ApiError(httpStatus.BAD_REQUEST, "User already logged in");
     }
@@ -90,7 +89,7 @@ authRoute.post("/login", async (c) => {
   const user = await loginUser(email, c.env.DATABASE_URL);
   const session = await sessionService.CreateSession(
     user.id,
-    c.env.userSessionsKV,
+    { Bindings: c.env },
     true
   );
   let cookieData = await sessionService.sessionCookie(1);
@@ -118,10 +117,7 @@ authRoute.post("/logout", async (c) => {
   if (sessionID == null) {
     throw new ApiError(httpStatus.BAD_REQUEST, "User not logged in");
   }
-  await sessionService.deleteSession(
-    sessionID.toString(),
-    c.env.userSessionsKV
-  );
+  await sessionService.deleteSession(sessionID.toString(), { Bindings: c.env });
   await setSignedCookie(c, "SID", "", c.env.HMACsecret, {
     path: "/",
     secure: true,
@@ -139,10 +135,9 @@ authRoute.post("/otp", async (c) => {
   if (sessionID == null) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
   }
-  const session = await sessionService.validSession(
-    sessionID.toString(),
-    c.env.userSessionsKV
-  );
+  const session = await sessionService.validSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
   if (session == null) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
   }
@@ -166,10 +161,9 @@ authRoute.post("/verify", async (c) => {
   if (sessionID == null) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
   }
-  const session = await sessionService.validSession(
-    sessionID.toString(),
-    c.env.userSessionsKV
-  );
+  const session = await sessionService.validSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
   if (session == null) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
   }
@@ -190,7 +184,7 @@ authRoute.post("/verify", async (c) => {
   }
   const newSession = await sessionService.CreateSession(
     session.values.user_id,
-    c.env.userSessionsKV
+    { Bindings: c.env }
   );
   let cookieData = await sessionService.sessionCookie(10);
   await setSignedCookie(c, "SID", newSession.id, c.env.HMACsecret, {
@@ -214,18 +208,19 @@ authRoute.post("/verify", async (c) => {
 });
 authRoute.get("/me", async (c) => {
   let data = c.req.header("user-agent");
-  data = formatUserAgent(data);
-  await sendOtpEmail(
-    "qurbanovhebib554@gmail.com",
-    {
-      Mode: "Login",
-      code: "123434",
-      Device: data,
-      Date: new Date().toISOString(),
-    },
-    c.env.AWS_ACCESS_KEY_ID,
-    c.env.AWS_SECRET_ACCESS_KEY
-  );
+
+  // data = formatUserAgent(data);
+  // await sendOtpEmail(
+  //   "qurbanovhebib554@gmail.com",
+  //   {
+  //     Mode: "Login",
+  //     code: "123434",
+  //     Device: data,
+  //     Date: new Date().toISOString(),
+  //   },
+  //   c.env.AWS_ACCESS_KEY_ID,
+  //   c.env.AWS_SECRET_ACCESS_KEY
+  // );
 
   return c.json({ data }, httpStatus.OK as StatusCode);
 });

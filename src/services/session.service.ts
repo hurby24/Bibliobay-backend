@@ -1,4 +1,6 @@
 import { createDatabaseConnection } from "../db/connection";
+import { Redis } from "@upstash/redis/cloudflare";
+import { Environment } from "../../bindings";
 import { email_verification_codes } from "../db/schema";
 import { generateRandomString, alphabet } from "oslo/crypto";
 import { createDate, TimeSpan, isWithinExpirationDate } from "oslo";
@@ -15,7 +17,7 @@ interface Session {
 
 export const CreateSession = async (
   userId: string,
-  userSessionsKV: KVNamespace,
+  Env: Environment,
   temporary: boolean = false,
   sessionIDLength: number = defaultSessionIDLength
 ): Promise<Session> => {
@@ -35,10 +37,12 @@ export const CreateSession = async (
     email_verified: verified,
     expires_at: expiration,
   };
+  const redis = Redis.fromEnv(Env.Bindings);
   try {
-    await userSessionsKV.put(id, JSON.stringify(values), {
-      expirationTtl: absoluteExpiration,
-    });
+    const p = redis.pipeline();
+    p.json.set(id, "$", JSON.stringify(values));
+    p.expire(id, absoluteExpiration);
+    await p.exec();
   } catch (error) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
@@ -50,11 +54,12 @@ export const CreateSession = async (
 
 export const validSession = async (
   id: string,
-  userSessionsKV: KVNamespace
+  Env: Environment
 ): Promise<Session | null> => {
-  let session;
+  let session: any;
+  const redis = Redis.fromEnv(Env.Bindings);
   try {
-    session = await userSessionsKV.get(id);
+    session = await redis.json.get(id, "$");
   } catch (error) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
@@ -64,7 +69,11 @@ export const validSession = async (
   if (!session) {
     return null;
   }
-  const sessionData = JSON.parse(session);
+  const sessionData = {
+    user_id: session[0].user_id,
+    email_verified: session[0].email_verified,
+    expires_at: session[0].expires_at,
+  };
   if (!isWithinExpirationDate(new Date(sessionData.expires_at))) {
     return null;
   }
@@ -75,19 +84,18 @@ export const validSession = async (
     !sessionData.email_verified
   ) {
     sessionData.expires_at = createDate(new TimeSpan(10, "d"));
-    await userSessionsKV.put(id, JSON.stringify(sessionData), {
-      expirationTtl: 10 * 24 * 60 * 60,
-    });
+    const p = redis.pipeline();
+    p.json.set(id, "$.expires_at", JSON.stringify(sessionData.expires_at));
+    p.expire(id, 10 * 24 * 60 * 60);
+    await p.exec();
   }
   return { id, values: sessionData };
 };
 
-export const deleteSession = async (
-  id: string,
-  userSessionsKV: KVNamespace
-) => {
+export const deleteSession = async (id: string, Env: Environment) => {
+  const redis = Redis.fromEnv(Env.Bindings);
   try {
-    await userSessionsKV.delete(id);
+    await redis.del(id);
   } catch (error) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
