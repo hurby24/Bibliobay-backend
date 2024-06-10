@@ -4,11 +4,6 @@ compatibility_date = "2023-12-01"
 # [vars]
 # MY_VAR = "my-variable"
 
-[[kv_namespaces]]
-binding = "userSessionsKV"
-id = "ad645213bf404b5ab373ae421020d35b"
-preview_id = "1c25a165f5fa4f69af8f99c29fd3efa1"
-
 [[unsafe.bindings]]
 name = "MY_RATE_LIMITER"
 type = "ratelimit"

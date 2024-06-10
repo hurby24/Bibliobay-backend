@@ -10,7 +10,6 @@ import { setSignedCookie, getSignedCookie, setCookie } from "hono/cookie";
 import { createCsrfToken } from "../utils/csrftoken";
 import { sendOtpEmail } from "../services/email.service";
 import { formatUserAgent, validateCaptcha } from "../utils/utils";
-import { Redis } from "@upstash/redis/cloudflare";
 
 const authRoute = new Hono<Environment>();
 
@@ -53,7 +52,19 @@ authRoute.post("/signup", async (c) => {
     sameSite: "Lax",
   });
   const otp = await sessionService.createOTP(user, c.env.DATABASE_URL);
-  //send mail here
+  let userAgent = c.req.header("user-agent");
+  userAgent = formatUserAgent(userAgent);
+  await sendOtpEmail(
+    user.email,
+    {
+      Mode: "Signup",
+      code: otp.code,
+      Device: userAgent,
+      Date: new Date().toISOString(),
+    },
+    c.env.AWS_ACCESS_KEY_ID,
+    c.env.AWS_SECRET_ACCESS_KEY
+  );
   const newcsrfToken = await createCsrfToken(session.id, c.env.HMACsecret);
 
   setCookie(c, "csrftoken", newcsrfToken, {
@@ -102,6 +113,19 @@ authRoute.post("/login", async (c) => {
     sameSite: "Lax",
   });
   const otp = await sessionService.createOTP(user, c.env.DATABASE_URL);
+  let userAgent = c.req.header("user-agent");
+  userAgent = formatUserAgent(userAgent);
+  await sendOtpEmail(
+    user.email,
+    {
+      Mode: "Login",
+      code: otp.code,
+      Device: userAgent,
+      Date: new Date().toISOString(),
+    },
+    c.env.AWS_ACCESS_KEY_ID,
+    c.env.AWS_SECRET_ACCESS_KEY
+  );
   const newcsrfToken = await createCsrfToken(session.id, c.env.HMACsecret);
 
   setCookie(c, "csrftoken", newcsrfToken, {
@@ -149,8 +173,21 @@ authRoute.post("/otp", async (c) => {
   }
   const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
   const otp = await sessionService.createOTP(user, c.env.DATABASE_URL);
-  //send mail here
-  console.log(otp.code);
+
+  let userAgent = c.req.header("user-agent");
+  userAgent = formatUserAgent(userAgent);
+  await sendOtpEmail(
+    user.email,
+    {
+      Mode: "Login",
+      code: otp.code,
+      Device: userAgent,
+      Date: new Date().toISOString(),
+    },
+    c.env.AWS_ACCESS_KEY_ID,
+    c.env.AWS_SECRET_ACCESS_KEY
+  );
+
   return c.json(
     "New OTP has been created and sent successfully.",
     httpStatus.CREATED as StatusCode
@@ -168,7 +205,6 @@ authRoute.post("/verify", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
   }
   if (session.values.email_verified) {
-    console.log(session.values.email_verified);
     throw new ApiError(httpStatus.FORBIDDEN, "User is already verified.");
   }
   const bodyParse = await c.req.json();
@@ -205,23 +241,5 @@ authRoute.post("/verify", async (c) => {
   c.status(httpStatus.NO_CONTENT as StatusCode);
   c.req.header();
   return c.body(null);
-});
-authRoute.get("/me", async (c) => {
-  let data = c.req.header("user-agent");
-
-  // data = formatUserAgent(data);
-  // await sendOtpEmail(
-  //   "qurbanovhebib554@gmail.com",
-  //   {
-  //     Mode: "Login",
-  //     code: "123434",
-  //     Device: data,
-  //     Date: new Date().toISOString(),
-  //   },
-  //   c.env.AWS_ACCESS_KEY_ID,
-  //   c.env.AWS_SECRET_ACCESS_KEY
-  // );
-
-  return c.json({ data }, httpStatus.OK as StatusCode);
 });
 export default authRoute;
