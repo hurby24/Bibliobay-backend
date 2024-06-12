@@ -1,7 +1,7 @@
 import { createDatabaseConnection } from "../db/connection";
 import { Redis } from "@upstash/redis/cloudflare";
 import { Environment } from "../../bindings";
-import { email_verification_codes } from "../db/schema";
+import { email_verification_codes, users } from "../db/schema";
 import { generateRandomString, alphabet } from "oslo/crypto";
 import { createDate, TimeSpan, isWithinExpirationDate } from "oslo";
 import httpStatus from "http-status";
@@ -149,18 +149,29 @@ export const verifyOTP = async (
   databaseConfig: string
 ): Promise<boolean> => {
   const db = await createDatabaseConnection(databaseConfig);
-  const verification = await db
-    .select()
-    .from(email_verification_codes)
-    .where(eq(email_verification_codes.user_id, user_id));
-  if (verification.length === 0) {
-    return false;
-  }
-  if (
-    verification[0].code !== code ||
-    !isWithinExpirationDate(new Date(verification[0].expires_at))
-  ) {
-    return false;
-  }
-  return true;
+  const verified = await db.transaction(async (trx) => {
+    const verification = await trx
+      .select()
+      .from(email_verification_codes)
+      .where(eq(email_verification_codes.user_id, user_id));
+
+    if (verification.length === 0) {
+      return false;
+    }
+
+    const verificationCode = verification[0];
+
+    if (
+      verificationCode.code !== code ||
+      !isWithinExpirationDate(new Date(verificationCode.expires_at))
+    ) {
+      return false;
+    }
+    await trx
+      .update(users)
+      .set({ email_confirmed_at: new Date() })
+      .where(eq(users.id, user_id));
+    return true;
+  });
+  return verified;
 };

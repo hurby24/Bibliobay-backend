@@ -39,7 +39,12 @@ export const loginUser = async (email: string, databaseConfig: string) => {
   let result;
   const db = await createDatabaseConnection(databaseConfig);
   try {
-    result = await db.select().from(users).where(eq(users.email, email));
+    // result = await db.select().from(users).where(eq(users.email, email));
+    result = await db
+      .update(users)
+      .set({ last_sign_in_at: new Date() })
+      .where(eq(users.email, email))
+      .returning();
   } catch (error) {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to login");
   }
@@ -57,8 +62,8 @@ export const getUser = async (id: string, databaseConfig: string) => {
   } catch (error) {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get user");
   }
-  if (result.length === 0) {
-    return null;
-  }
+
   return result[0];
 };
+
+// getUserprofile takes username and id
