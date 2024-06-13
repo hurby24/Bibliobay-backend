@@ -25,7 +25,7 @@ export const CreateUser = async (email: string, databaseConfig: string) => {
     username: username,
     email: email,
     bio: "",
-    avatar: "test",
+    avatar: `https://ui-avatars.com/api/?name=${username}&size=300&bold=true&background=random`,
   };
   try {
     result = await db.insert(users).values(user).returning();
@@ -66,4 +66,8 @@ export const getUser = async (id: string, databaseConfig: string) => {
   return result[0];
 };
 
-// getUserprofile takes username and id
+export const getUserProfile = async (
+  id: string,
+  databaseConfig: string,
+  username: string = ""
+) => {};
