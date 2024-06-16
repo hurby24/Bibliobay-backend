@@ -1,3 +1,5 @@
+import { PgSelectQueryBuilder } from "drizzle-orm/pg-core";
+
 interface CaptchaResponse {
   success: boolean;
   challenge_ts: string;
@@ -58,4 +60,26 @@ export async function validateCaptcha(
 
   const outcome = (await result.json()) as CaptchaResponse;
   return outcome.success;
+}
+
+export function withPagination<T extends PgSelectQueryBuilder>(
+  qb: T,
+  maxlimit: number = 25,
+  page: string = "1",
+  limit: string = "10"
+) {
+  let sanitizedPage = parseInt(page, 10);
+  let sanitizedLimit = Math.min(parseInt(limit, 10), maxlimit);
+
+  if (isNaN(sanitizedPage) || sanitizedPage < 1) {
+    sanitizedPage = 1;
+  }
+  if (
+    isNaN(sanitizedLimit) ||
+    sanitizedLimit < 1 ||
+    sanitizedLimit > maxlimit
+  ) {
+    sanitizedLimit = maxlimit;
+  }
+  return qb.limit(sanitizedLimit).offset((sanitizedPage - 1) * sanitizedLimit);
 }

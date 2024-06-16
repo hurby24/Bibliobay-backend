@@ -1,15 +1,12 @@
 import { createDatabaseConnection } from "../db/connection";
-import { books, users, shelves, book_genres, genres } from "../db/schema";
-import {
-  PgSelectQueryBuilder,
-  QueryBuilder,
-  PgSelectQueryBuilderBase,
-} from "drizzle-orm/pg-core";
-import { eq, and } from "drizzle-orm";
+import { books, users, shelves } from "../db/schema";
+import { PgSelectQueryBuilder, QueryBuilder } from "drizzle-orm/pg-core";
+import { eq, and, like } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
 import { spaceSlug, verb, digits, noun } from "space-slug";
+import { withPagination } from "../utils/utils";
 
 export const CreateUser = async (email: string, databaseConfig: string) => {
   let result;
@@ -217,4 +214,39 @@ export const getUserProfile = async (
     }
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get user");
   }
+};
+
+export const searchUsers = async (
+  username: string,
+  page: string = "1",
+  limit: string = "10",
+  databaseConfig: string
+) => {
+  let result;
+  let sanitizedUsername = username.trim().toLocaleLowerCase();
+  const db = await createDatabaseConnection(databaseConfig);
+  const qb = new QueryBuilder();
+  let query = qb
+    .select({
+      id: users.id,
+      username: users.username,
+      bio: users.bio,
+      avatar: users.avatar,
+      banner: users.banner,
+      private: users.private,
+    })
+    .from(users)
+    .where(
+      and(
+        like(users.username, `%${sanitizedUsername}%`),
+        eq(users.private, false)
+      )
+    )
+    .orderBy(users.username)
+    .limit(10)
+    .offset(0)
+    .$dynamic();
+  withPagination(query, 10, page, limit);
+  result = (await db.execute(query)).rows;
+  return result;
 };

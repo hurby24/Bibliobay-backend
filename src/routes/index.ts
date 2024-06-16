@@ -9,7 +9,7 @@ export const defaultRoutes = [
     route: authRoute,
   },
   {
-    path: `/${base_path}/users`,
+    path: `/${base_path}`,
     route: userRoute,
   },
 ];
