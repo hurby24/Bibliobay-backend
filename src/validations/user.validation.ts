@@ -13,6 +13,6 @@ export const userUpdate = z.strictObject({
   username: z.string().min(3).max(25).optional(),
   bio: z.string().max(255).optional(),
   private: z.boolean().optional(),
-  avatar: z.string().url().optional(),
-  banner: z.string().url().optional(),
 });
+
+export const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
