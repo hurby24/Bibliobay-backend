@@ -67,6 +67,31 @@ export const getUser = async (id: string, databaseConfig: string) => {
   return result[0];
 };
 
+export const updateUser = async (
+  id: string,
+  userData: any,
+  databaseConfig: string
+) => {
+  let result;
+  const db = await createDatabaseConnection(databaseConfig);
+  if (Object.keys(userData).length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "User data is empty");
+  }
+  try {
+    result = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+  } catch (error) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to update user"
+    );
+  }
+  return result;
+};
+
 export const getUserProfile = async (
   id: string,
   databaseConfig: string,
