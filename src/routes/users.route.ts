@@ -72,3 +72,5 @@ userRoute.get("/users", async (c) => {
   const users = await searchUsers(q, page, limit, c.env.DATABASE_URL);
   return c.json(users, httpStatus.OK as StatusCode);
 });
+
+// /users/:username/books, /users/:username/shelves, /users/:username/stats
