@@ -1,0 +1,25 @@
+import { z } from "zod";
+
+export const createBook = z.strictObject({
+  title: z.string().min(1).max(150),
+  author: z.string().min(3).max(150),
+  cover_url: z.string().url(),
+  pages: z.number().int().positive().min(1).max(10000),
+  current_page: z.number().int().positive().min(0).max(10000).default(0),
+  rating: z.number().positive().min(0).max(5).optional(),
+  favorite: z.boolean().default(false),
+  finished: z.boolean().default(false),
+  private: z.boolean().default(false),
+});
+
+export const updateBook = z.strictObject({
+  title: z.string().min(1).max(150).optional(),
+  author: z.string().min(3).max(150).optional(),
+  cover_url: z.string().url().optional(),
+  pages: z.number().int().positive().min(1).max(10000).optional(),
+  current_page: z.number().int().positive().min(0).max(10000).optional(),
+  rating: z.number().positive().min(0).max(5).optional(),
+  favorite: z.boolean().optional(),
+  finished: z.boolean().optional(),
+  private: z.boolean().optional(),
+});

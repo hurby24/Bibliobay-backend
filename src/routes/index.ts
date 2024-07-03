@@ -1,6 +1,7 @@
 import authRoute from "./auth.route";
 import userRoute from "./users.route";
 import settingRoute from "./settings.route";
+import bookRoute from "./books.route";
 
 const base_path = "v0";
 
@@ -10,11 +11,15 @@ export const defaultRoutes = [
     route: authRoute,
   },
   {
-    path: `/${base_path}`,
+    path: `/${base_path}/users`,
     route: userRoute,
   },
   {
     path: `/${base_path}/settings`,
     route: settingRoute,
+  },
+  {
+    path: `/${base_path}/books`,
+    route: bookRoute,
   },
 ];
