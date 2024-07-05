@@ -133,7 +133,7 @@ authRoute.post("/login", async (c) => {
     secure: true,
     sameSite: "Lax",
   });
-  return c.json(otp.code, httpStatus.CREATED as StatusCode);
+  return c.json(user, httpStatus.CREATED as StatusCode);
 });
 
 authRoute.post("/logout", async (c) => {
@@ -239,7 +239,6 @@ authRoute.post("/verify", async (c) => {
     sameSite: "Lax",
   });
   c.status(httpStatus.NO_CONTENT as StatusCode);
-  c.req.header();
   return c.body(null);
 });
 export default authRoute;
