@@ -1,5 +1,5 @@
 import { createDatabaseConnection } from "../db/connection";
-import { books, users } from "../db/schema";
+import { books, users, genres, book_genres } from "../db/schema";
 import { eq, and, like } from "drizzle-orm";
 
 import { nanoid } from "nanoid";
@@ -28,13 +28,25 @@ export const getBook = async (
       if (book[0].books.user_id != user_id && book[0].books.private) {
         throw new ApiError(httpStatus.NOT_FOUND, "Book not found");
       }
-
+      let genre = await trx
+        .select({
+          id: genres.id,
+          name: genres.name,
+        })
+        .from(genres)
+        .innerJoin(
+          book_genres,
+          and(
+            eq(genres.id, book_genres.genre_id),
+            eq(book_genres.book_id, bookId)
+          )
+        );
       let user = {
         id: book[0].users.id,
         username: book[0].users.username,
         avatar: book[0].users.avatar,
       };
-      return { book: book[0].books, user: user };
+      return { book: book[0].books, genrse: genre, user: user };
     });
     return result;
   } catch (error) {

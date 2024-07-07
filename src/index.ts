@@ -5,6 +5,8 @@ import { ApiError } from "./utils/ApiError";
 import { errorHandler } from "./middlewares/error";
 import crsftoken from "./middlewares/csrfToken";
 import rateLimit from "./middlewares/ratelimit";
+import { cors } from "hono/cors";
+import { prettyJSON } from "hono/pretty-json";
 import { defaultRoutes } from "./routes";
 
 const app = new Hono<Environment>();
@@ -15,11 +17,18 @@ app.notFound(() => {
 app.onError(errorHandler);
 
 app.use(crsftoken);
-app.on("GET", "*", async (c, next) => {
-  return rateLimit(c, next);
-});
+app.use(rateLimit);
+app.use(
+  "/v0/*",
+  cors({
+    origin: "https://bibliobay.net",
+    allowMethods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
+app.use(prettyJSON());
+
 app.get("/", (c) => {
-  return c.text("Hello Hono!");
+  return c.text("shit works");
 });
 
 defaultRoutes.forEach((route) => {
