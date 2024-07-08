@@ -231,6 +231,10 @@ authRoute.post("/verify", async (c) => {
     expires: cookieData.expires,
     sameSite: "Lax",
   });
+  await sessionService.deleteSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
+
   const newcsrfToken = await createCsrfToken(newSession.id, c.env.HMACsecret);
 
   setCookie(c, "csrftoken", newcsrfToken, {
