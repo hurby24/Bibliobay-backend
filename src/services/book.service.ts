@@ -1,10 +1,10 @@
 import { createDatabaseConnection } from "../db/connection";
 import { books, users, genres, book_genres } from "../db/schema";
 import { eq, and, like } from "drizzle-orm";
-
-import { nanoid } from "nanoid";
+import { nanoid, customAlphabet } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
+import { toUrlSafeString } from "../utils/utils";
 
 export const getBook = async (
   bookId: string,
@@ -55,4 +55,66 @@ export const getBook = async (
     }
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get book");
   }
+};
+
+export const createBook = async (
+  book: any,
+  user_id: string,
+  databaseConfig: string
+) => {
+  let result: any;
+  const alphabet =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const nanoid = customAlphabet(alphabet, 15);
+  const id = nanoid();
+  const bookTitle = toUrlSafeString(book.title);
+  let bookBody = {
+    id: id,
+    slug: `${bookTitle}-${id}`,
+    user_id: user_id,
+  };
+  try {
+    const genreIds = book.genres || [];
+    if (book.pages < book.current_page) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        "Current page cannot be greater than total pages"
+      );
+    }
+    if (book.pages == book.current_page) {
+      book.finished = true;
+      if (!book.rating) {
+        throw new ApiError(httpStatus.BAD_REQUEST, "Rating is required");
+      }
+      book.rating = Math.round(book.rating * 10) / 10;
+    } else {
+      book.finished = false;
+      book.rating = null;
+    }
+    const bookComplete = { ...bookBody, ...book };
+    const db = await createDatabaseConnection(databaseConfig);
+    await db.transaction(async (trx: any) => {
+      result = await trx.insert(books).values(bookComplete).returning();
+
+      if (genreIds.length > 0) {
+        const insertPromises = genreIds.map(async (genreId: number) => {
+          await trx
+            .insert(book_genres)
+            .values({ book_id: result[0].id, genre_id: genreId })
+            .returning();
+        });
+
+        await Promise.all(insertPromises);
+      }
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to create book"
+    );
+  }
+  return result[0];
 };

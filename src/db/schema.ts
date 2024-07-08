@@ -26,7 +26,7 @@ export const users = pgTable("users", {
 });
 
 export const books = pgTable("books", {
-  id: char("id", { length: 21 }).primaryKey(),
+  id: char("id", { length: 15 }).primaryKey(),
   user_id: char("user_id", { length: 21 })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -59,7 +59,7 @@ export const shelves = pgTable("shelves", {
 
 export const book_shelves = pgTable("book_shelves", {
   id: serial("id").primaryKey(),
-  book_id: char("book_id", { length: 21 })
+  book_id: char("book_id", { length: 15 })
     .notNull()
     .references(() => books.id, { onDelete: "cascade" }),
   shelf_id: char("shelf_id", { length: 21 })
@@ -74,7 +74,7 @@ export const genres = pgTable("genres", {
 
 export const book_genres = pgTable("book_genres", {
   id: serial("id").primaryKey(),
-  book_id: char("book_id", { length: 21 })
+  book_id: char("book_id", { length: 15 })
     .notNull()
     .references(() => books.id, { onDelete: "cascade" }),
   genre_id: integer("genre_id")

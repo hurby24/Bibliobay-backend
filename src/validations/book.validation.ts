@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const uniqueArray = (array: number[]) => new Set(array).size === array.length;
+
 export const createBook = z.strictObject({
   title: z.string().min(1).max(150),
   author: z.string().min(3).max(150),
@@ -10,6 +12,13 @@ export const createBook = z.strictObject({
   favorite: z.boolean().default(false),
   finished: z.boolean().default(false),
   private: z.boolean().default(false),
+  genres: z
+    .array(z.number().int().positive().min(1).max(30))
+    .min(1)
+    .max(3)
+    .refine(uniqueArray, {
+      message: "Genres must be unique",
+    }),
 });
 
 export const updateBook = z.strictObject({

@@ -83,3 +83,11 @@ export function withPagination<T extends PgSelectQueryBuilder>(
   }
   return qb.limit(sanitizedLimit).offset((sanitizedPage - 1) * sanitizedLimit);
 }
+
+export function toUrlSafeString(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-]/g, "");
+}

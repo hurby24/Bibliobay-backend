@@ -6,6 +6,7 @@ import { errorHandler } from "./middlewares/error";
 import crsftoken from "./middlewares/csrfToken";
 import rateLimit from "./middlewares/ratelimit";
 import { cors } from "hono/cors";
+import { etag } from "hono/etag";
 import { prettyJSON } from "hono/pretty-json";
 import { defaultRoutes } from "./routes";
 
@@ -25,6 +26,7 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
+app.get("*", etag());
 app.use(prettyJSON());
 
 app.get("/", (c) => {
