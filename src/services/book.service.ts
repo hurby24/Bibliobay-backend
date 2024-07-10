@@ -118,3 +118,35 @@ export const createBook = async (
   }
   return result[0];
 };
+
+export const deleteBook = async (
+  bookId: string,
+  user_id: string,
+  databaseConfig: string,
+  images: R2Bucket
+) => {
+  const db = await createDatabaseConnection(databaseConfig);
+  try {
+    await db.transaction(async (trx) => {
+      let book = await trx.select().from(books).where(eq(books.id, bookId));
+      if (!book || book.length === 0) {
+        throw new ApiError(httpStatus.NOT_FOUND, "Book not found");
+      }
+      if (book[0].user_id != user_id) {
+        throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+      }
+      await trx.delete(books).where(eq(books.id, bookId));
+      const deleteUrl: string = book[0].cover_url.split("/").pop() as string;
+
+      await images.delete(deleteUrl);
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to delete book"
+    );
+  }
+};
