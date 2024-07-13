@@ -1,7 +1,7 @@
 import { createDatabaseConnection } from "../db/connection";
 import { books, users, shelves } from "../db/schema";
 import { PgSelectQueryBuilder, QueryBuilder } from "drizzle-orm/pg-core";
-import { eq, and, like } from "drizzle-orm";
+import { eq, and, like, count, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
@@ -117,6 +117,28 @@ export const getUserProfile = async (
       user = user[0];
       const isCurrentUser = user.id === id;
 
+      let bookCount = await trx
+        .select({ count: count() })
+        .from(books)
+        .where(eq(books.user_id, user.id));
+
+      let bookThisYear = await trx
+        .select({ count: count() })
+        .from(books)
+        .where(
+          and(
+            eq(books.user_id, user.id),
+            eq(
+              sql`EXTRACT(YEAR FROM ${books.created_at})`,
+              new Date().getFullYear()
+            )
+          )
+        );
+      let shelfCount = await trx
+        .select({ count: count() })
+        .from(shelves)
+        .where(eq(shelves.user_id, user.id));
+
       if (!isCurrentUser && user.private) {
         return {
           user: {
@@ -125,6 +147,9 @@ export const getUserProfile = async (
             bio: user.bio,
             avatar: user.avatar,
             banner: user.banner,
+            bookCount: bookCount[0].count,
+            bookThisYear: bookThisYear[0].count,
+            shelfCount: shelfCount[0].count,
             private: user.isPrivate,
             created_at: user.createdAt,
           },
@@ -198,6 +223,9 @@ export const getUserProfile = async (
             bio: user.bio,
             avatar: user.avatar,
             banner: user.banner,
+            bookCount: bookCount[0].count,
+            bookThisYear: bookThisYear[0].count,
+            shelfCount: shelfCount[0].count,
             private: user.isPrivate,
             created_at: user.createdAt,
           },
@@ -217,6 +245,12 @@ export const getUserProfile = async (
         let read = (await trx.execute(userBooks)).rows;
         ByStatus(userBooks, "favorites", true);
         let favorite = (await trx.execute(userBooks)).rows;
+        user = {
+          ...user,
+          bookCount: bookCount[0].count,
+          bookThisYear: bookThisYear[0].count,
+          shelfCount: shelfCount[0].count,
+        };
         return {
           user: user,
           books: {

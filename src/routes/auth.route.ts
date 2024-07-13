@@ -72,7 +72,8 @@ authRoute.post("/signup", async (c) => {
     secure: true,
     sameSite: "Lax",
   });
-  return c.json(user, httpStatus.CREATED as StatusCode);
+  c.status(httpStatus.NO_CONTENT as StatusCode);
+  return c.body(null);
 });
 
 authRoute.post("/login", async (c) => {
@@ -133,7 +134,8 @@ authRoute.post("/login", async (c) => {
     secure: true,
     sameSite: "Lax",
   });
-  return c.json(user, httpStatus.CREATED as StatusCode);
+  c.status(httpStatus.NO_CONTENT as StatusCode);
+  return c.body(null);
 });
 
 authRoute.post("/logout", async (c) => {
