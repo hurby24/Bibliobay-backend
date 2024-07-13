@@ -52,7 +52,7 @@ userRoute.get("/me", async (c) => {
     c.env.DATABASE_URL
   );
 
-  return c.json(userProfile, httpStatus.CREATED as StatusCode);
+  return c.json(userProfile, httpStatus.OK as StatusCode);
 });
 
 userRoute.get("/:username", async (c) => {
@@ -70,7 +70,7 @@ userRoute.get("/:username", async (c) => {
     c.env.DATABASE_URL,
     username
   );
-  return c.json(userProfile, httpStatus.CREATED as StatusCode);
+  return c.json(userProfile, httpStatus.OK as StatusCode);
 });
 // /users/:username/books, /users/:username/shelves, /users/:username/stats
 userRoute.get("/:username/books", async (c) => {});
