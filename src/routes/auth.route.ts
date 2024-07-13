@@ -142,7 +142,7 @@ authRoute.post("/logout", async (c) => {
     throw new ApiError(httpStatus.BAD_REQUEST, "User not logged in");
   }
   await sessionService.deleteSession(sessionID.toString(), { Bindings: c.env });
-  await setSignedCookie(c, "SID", "", c.env.HMACsecret, {
+  await setCookie(c, "SID", "", {
     path: "/",
     secure: true,
     httpOnly: true,

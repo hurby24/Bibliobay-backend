@@ -8,6 +8,7 @@ import rateLimit from "./middlewares/ratelimit";
 import { cors } from "hono/cors";
 import { etag } from "hono/etag";
 import { prettyJSON } from "hono/pretty-json";
+import { secureHeaders } from "hono/secure-headers";
 import { defaultRoutes } from "./routes";
 
 const app = new Hono<Environment>();
@@ -17,6 +18,7 @@ app.notFound(() => {
 });
 app.onError(errorHandler);
 
+app.use(secureHeaders());
 app.use(crsftoken);
 app.use(rateLimit);
 app.use(
