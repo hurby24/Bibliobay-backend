@@ -141,7 +141,7 @@ authRoute.post("/login", async (c) => {
 authRoute.post("/logout", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID == null) {
-    throw new ApiError(httpStatus.BAD_REQUEST, "User not logged in");
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
   }
   await sessionService.deleteSession(sessionID.toString(), { Bindings: c.env });
   await setCookie(c, "SID", "", {
@@ -190,10 +190,8 @@ authRoute.post("/otp", async (c) => {
     c.env.AWS_SECRET_ACCESS_KEY
   );
 
-  return c.json(
-    "New OTP has been created and sent successfully.",
-    httpStatus.CREATED as StatusCode
-  );
+  c.status(httpStatus.NO_CONTENT as StatusCode);
+  return c.body(null);
 });
 authRoute.post("/verify", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
