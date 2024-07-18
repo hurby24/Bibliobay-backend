@@ -29,9 +29,7 @@ settingRoute.get("/", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
   const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
-  }
+
   return c.json(user, httpStatus.OK as StatusCode);
 });
 
@@ -196,6 +194,12 @@ settingRoute.delete("/avatar", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
   const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
+  if (
+    user.avatar ==
+    "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random"
+  ) {
+    return c.json(user, httpStatus.OK as StatusCode);
+  }
   const updatebody = {
     avatar:
       "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random",
@@ -225,6 +229,9 @@ settingRoute.delete("/banner", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
   const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
+  if (!user.banner) {
+    return c.json(user, httpStatus.OK as StatusCode);
+  }
   const updatebody = {
     banner: null,
   };
