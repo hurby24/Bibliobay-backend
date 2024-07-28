@@ -19,7 +19,9 @@ app.notFound(() => {
 app.onError(errorHandler);
 
 app.use(secureHeaders());
-app.use(crsftoken);
+app.put(crsftoken);
+app.post(crsftoken);
+app.delete(crsftoken);
 app.use(rateLimit);
 app.use(
   "/v0/*",
