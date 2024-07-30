@@ -1,7 +1,7 @@
 import { createDatabaseConnection } from "../db/connection";
 import { books, users, genres, book_genres } from "../db/schema";
-import { eq, and, like } from "drizzle-orm";
-import { nanoid, customAlphabet } from "nanoid";
+import { eq, and, inArray } from "drizzle-orm";
+import { customAlphabet } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
 import { toUrlSafeString } from "../utils/utils";
@@ -149,4 +149,128 @@ export const deleteBook = async (
       "Failed to delete book"
     );
   }
+};
+
+export const updateBook = async (
+  user_id: string,
+  bookId: string,
+  bookData: any,
+  databaseConfig: string,
+  images: R2Bucket
+) => {
+  let result: any;
+  if (Object.keys(bookData).length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Book data is empty");
+  }
+
+  const db = await createDatabaseConnection(databaseConfig);
+
+  try {
+    await db.transaction(async (trx) => {
+      const [book] = await trx.select().from(books).where(eq(books.id, bookId));
+
+      if (!book) {
+        throw new ApiError(httpStatus.NOT_FOUND, "Book not found");
+      }
+
+      if (book.user_id !== user_id) {
+        throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const update: any = {
+        title: bookData.title || book.title,
+        pages: bookData.pages || book.pages,
+        current_page: bookData.current_page || book.current_page,
+        author: bookData.author || book.author,
+        cover_url: bookData.cover_url || book.cover_url,
+        private:
+          bookData.private !== undefined ? bookData.private : book.private,
+        favorite:
+          bookData.favorite !== undefined ? bookData.favorite : book.favorite,
+        update_at: new Date(),
+      };
+
+      if (bookData.title) {
+        update.slug = `${toUrlSafeString(bookData.title)}-${bookId}`;
+      }
+
+      if (update.current_page > update.pages) {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          "Current page cannot be greater than total pages"
+        );
+      }
+
+      if (update.current_page === update.pages) {
+        update.finished = true;
+        update.rating =
+          bookData.rating !== undefined
+            ? Math.round(bookData.rating * 10) / 10
+            : book.rating || null;
+
+        if (update.rating === null) {
+          throw new ApiError(httpStatus.BAD_REQUEST, "Rating is required");
+        }
+      } else {
+        update.finished = false;
+        update.rating = null;
+      }
+      if (bookData.cover_url) {
+        const deleteUrl: string = book.cover_url.split("/").pop() as string;
+        await images.delete(deleteUrl);
+      }
+      let genresList = await trx
+        .select({
+          id: genres.id,
+        })
+        .from(genres)
+        .innerJoin(
+          book_genres,
+          and(
+            eq(genres.id, book_genres.genre_id),
+            eq(book_genres.book_id, bookId)
+          )
+        );
+      const genreIds = genresList.map((genre: { id: number }) => genre.id);
+      const newGenreIds = bookData.genres as number[];
+
+      const genresToDelete = genreIds.filter((id) => !newGenreIds.includes(id));
+      const genresToAdd = newGenreIds.filter((id) => !genreIds.includes(id));
+
+      if (genresToDelete.length > 0) {
+        await trx
+          .delete(book_genres)
+          .where(
+            and(
+              eq(book_genres.book_id, bookId),
+              inArray(book_genres.genre_id, genresToDelete)
+            )
+          );
+      }
+
+      if (genresToAdd.length > 0) {
+        await trx.insert(book_genres).values(
+          genresToAdd.map((genreId: number) => ({
+            book_id: bookId,
+            genre_id: genreId,
+          }))
+        );
+      }
+      result = await trx
+        .update(books)
+        .set(update)
+        .where(eq(books.id, bookId))
+        .returning();
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    console.log(error);
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to update book"
+    );
+  }
+  return result[0];
 };

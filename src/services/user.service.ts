@@ -61,6 +61,9 @@ export const getUser = async (id: string, databaseConfig: string) => {
   try {
     result = await db.select().from(users).where(eq(users.id, id));
   } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get user");
   }
 
@@ -84,6 +87,9 @@ export const updateUser = async (
       .where(eq(users.id, id))
       .returning();
   } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
       "Failed to update user"
@@ -265,10 +271,7 @@ export const getUserProfile = async (
 
     return result;
   } catch (error) {
-    if (
-      error instanceof ApiError &&
-      error.statusCode === httpStatus.NOT_FOUND
-    ) {
+    if (error instanceof ApiError) {
       throw error;
     }
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get user");

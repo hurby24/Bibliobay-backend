@@ -6,7 +6,12 @@ import { getSignedCookie } from "hono/cookie";
 import * as sessionService from "../services/session.service";
 import * as bookValidation from "../validations/book.validation";
 import { ApiError } from "../utils/ApiError";
-import { getBook, createBook, deleteBook } from "../services/book.service";
+import {
+  getBook,
+  createBook,
+  deleteBook,
+  updateBook,
+} from "../services/book.service";
 
 const bookRoute = new Hono<Environment>();
 
@@ -27,6 +32,33 @@ bookRoute.get("/:id", async (c) => {
     book_id,
     c.env.DATABASE_URL,
     session?.values.user_id
+  );
+  return c.json(book, httpStatus.OK as StatusCode);
+});
+
+bookRoute.put("/:id", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  if (sessionID == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  const session = await sessionService.validSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
+  if (session == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  if (!session.values.email_verified) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+  }
+  let book_id = c.req.param("id");
+  const bodyParse = await c.req.json();
+  const body = await bookValidation.updateBook.parseAsync(bodyParse);
+  const book = await updateBook(
+    session.values.user_id,
+    book_id,
+    body,
+    c.env.DATABASE_URL,
+    c.env.IMAGES
   );
   return c.json(book, httpStatus.OK as StatusCode);
 });
