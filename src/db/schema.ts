@@ -45,7 +45,7 @@ export const books = pgTable("books", {
 });
 
 export const shelves = pgTable("shelves", {
-  id: char("id", { length: 21 }).primaryKey(),
+  id: char("id", { length: 15 }).primaryKey(),
   user_id: char("user_id", { length: 21 })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -62,7 +62,7 @@ export const book_shelves = pgTable("book_shelves", {
   book_id: char("book_id", { length: 15 })
     .notNull()
     .references(() => books.id, { onDelete: "cascade" }),
-  shelf_id: char("shelf_id", { length: 21 })
+  shelf_id: char("shelf_id", { length: 15 })
     .notNull()
     .references(() => shelves.id, { onDelete: "cascade" }),
 });

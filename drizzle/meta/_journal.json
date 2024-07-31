@@ -29,6 +29,13 @@
       "when": 1720466088741,
       "tag": "0003_bitter_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1722445593792,
+      "tag": "0004_wild_blonde_phantom",
+      "breakpoints": true
     }
   ]
 }
