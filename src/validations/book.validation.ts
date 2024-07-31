@@ -40,3 +40,5 @@ export const updateBook = z.strictObject({
     })
     .optional(),
 });
+
+export const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];

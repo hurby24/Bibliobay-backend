@@ -12,13 +12,13 @@ import {
   deleteBook,
   updateBook,
 } from "../services/book.service";
+import { bodyLimit } from "hono/body-limit";
+import { sha256 } from "hono/utils/crypto";
 
 const bookRoute = new Hono<Environment>();
 
 export default bookRoute;
 
-// GET /books/:id, POST /books, PUT /books/:id, DELETE /books/:id
-// POST /books/:id/cover (multipart/form-data),
 bookRoute.get("/:id", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   let session;
@@ -111,3 +111,57 @@ bookRoute.post("/", async (c) => {
   );
   return c.json(book, httpStatus.CREATED as StatusCode);
 });
+
+bookRoute.post(
+  "/cover",
+  bodyLimit({
+    maxSize: 1024 * 1024,
+    onError: (c) => {
+      return c.text("File size exceeds the limit of 1MB", 413);
+    },
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+
+    const body = await c.req.parseBody();
+    const file = body["file"] as File;
+    let width = body["width"] ? parseInt(body["width"].toString()) : 0;
+    let height = body["height"] ? parseInt(body["height"].toString()) : 0;
+
+    if (!file) {
+      return c.text("No file uploaded", 400);
+    }
+    if (!bookValidation.allowedImageTypes.includes(file.type)) {
+      return c.text("Unsupported file type", 415);
+    }
+    if (width !== 140 || height !== 200) {
+      return c.text("Invalid image dimensions", 400);
+    }
+    const content = await file.arrayBuffer();
+
+    const buffer = new Uint8Array(content);
+    const hash = await sha256(buffer);
+    const extension = file.type.split("/")[1];
+    const key = `${hash}.${extension}`;
+
+    await c.env.IMAGES.put(key, buffer, {
+      httpMetadata: { contentType: file.type },
+    });
+
+    let url = `https://images.bibliobay.net/${key}`;
+
+    return c.json({ cover_url: url }, httpStatus.CREATED as StatusCode);
+  }
+);
