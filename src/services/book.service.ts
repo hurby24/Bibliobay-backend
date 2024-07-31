@@ -187,7 +187,7 @@ export const updateBook = async (
           bookData.private !== undefined ? bookData.private : book.private,
         favorite:
           bookData.favorite !== undefined ? bookData.favorite : book.favorite,
-        update_at: new Date(),
+        updated_at: new Date(),
       };
 
       if (bookData.title) {

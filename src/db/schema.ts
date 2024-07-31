@@ -21,7 +21,7 @@ export const users = pgTable("users", {
   is_banned: boolean("is_banned").notNull().default(false),
   private: boolean("private").notNull().default(false),
   last_sign_in_at: timestamp("last_sign_in_at").notNull().defaultNow(),
-  update_at: timestamp("update_at"),
+  updated_at: timestamp("update_at"),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -40,7 +40,7 @@ export const books = pgTable("books", {
   favorite: boolean("favortie").notNull().default(false),
   finished: boolean("finished").notNull().default(false),
   private: boolean("private").notNull().default(false),
-  update_at: timestamp("update_at"),
+  updated_at: timestamp("update_at"),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -53,7 +53,7 @@ export const shelves = pgTable("shelves", {
   name: varchar("name", { length: 50 }).notNull(),
   description: varchar("description", { length: 255 }),
   private: boolean("private").notNull().default(false),
-  update_at: timestamp("update_at"),
+  updated_at: timestamp("update_at"),
   created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
