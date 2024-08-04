@@ -1,4 +1,5 @@
-import { createDatabaseConnection } from "../db/connection";
+import { drizzle } from "drizzle-orm/d1";
+import { Environment } from "../../bindings";
 import { books, users, shelves } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
@@ -9,7 +10,7 @@ import { toUrlSafeString } from "../utils/utils";
 export const createShelf = async (
   user_id: string,
   shelf: any,
-  databaseConfig: string
+  Env: Environment
 ) => {
   let result: any;
   const alphabet =
@@ -26,7 +27,7 @@ export const createShelf = async (
     private: shelf.private,
   };
   try {
-    const db = await createDatabaseConnection(databaseConfig);
+    const db = drizzle(Env.Bindings.DB);
     result = await db.insert(shelves).values(shelfData).returning();
   } catch (error) {
     if (error instanceof ApiError) {
@@ -44,45 +45,43 @@ export const updateShelf = async (
   user_id: string,
   shelf_id: string,
   shelfData: any,
-  databaseConfig: string
+  Env: Environment
 ) => {
   let result: any;
   if (Object.keys(shelfData).length === 0) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Shelf data is empty");
   }
 
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
 
   try {
-    await db.transaction(async (trx) => {
-      const [shelf] = await trx
-        .select()
-        .from(shelves)
-        .where(eq(shelves.id, shelf_id));
+    const [shelf] = await db
+      .select()
+      .from(shelves)
+      .where(eq(shelves.id, shelf_id));
 
-      if (!shelf) {
-        throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
-      }
+    if (!shelf) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
+    }
 
-      if (shelf.user_id !== user_id) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-      }
-      const update: any = {
-        name: shelfData.name || shelf.name,
-        description: shelfData.description || shelf.description,
-        private:
-          shelfData.private !== undefined ? shelfData.private : shelf.private,
-        updated_at: new Date(),
-      };
-      if (shelfData.name) {
-        update.slug = `${toUrlSafeString(shelfData.name)}-${shelf_id}`;
-      }
-      result = await trx
-        .update(shelves)
-        .set(update)
-        .where(eq(shelves.id, shelf_id))
-        .returning();
-    });
+    if (shelf.user_id !== user_id) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const update: any = {
+      name: shelfData.name || shelf.name,
+      description: shelfData.description || shelf.description,
+      private:
+        shelfData.private !== undefined ? shelfData.private : shelf.private,
+      updated_at: new Date().toISOString(),
+    };
+    if (shelfData.name) {
+      update.slug = `${toUrlSafeString(shelfData.name)}-${shelf_id}`;
+    }
+    result = await db
+      .update(shelves)
+      .set(update)
+      .where(eq(shelves.id, shelf_id))
+      .returning();
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
@@ -98,26 +97,25 @@ export const updateShelf = async (
 export const deleteShelf = async (
   user_id: string,
   shelf_id: string,
-  databaseConfig: string
+  Env: Environment
 ) => {
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
+
   try {
-    await db.transaction(async (trx) => {
-      const shelf = await trx
-        .select()
-        .from(shelves)
-        .where(eq(shelves.id, shelf_id));
+    const shelf = await db
+      .select()
+      .from(shelves)
+      .where(eq(shelves.id, shelf_id));
 
-      if (!shelf || shelf.length === 0) {
-        throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
-      }
+    if (!shelf || shelf.length === 0) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
+    }
 
-      if (shelf[0].user_id !== user_id) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-      }
+    if (shelf[0].user_id !== user_id) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
 
-      await trx.delete(shelves).where(eq(shelves.id, shelf_id));
-    });
+    await db.delete(shelves).where(eq(shelves.id, shelf_id));
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;

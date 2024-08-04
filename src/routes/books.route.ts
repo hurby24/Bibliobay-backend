@@ -30,7 +30,7 @@ bookRoute.get("/:id", async (c) => {
   let book_id = c.req.param("id");
   let book = await getBook(
     book_id,
-    c.env.DATABASE_URL,
+    { Bindings: c.env },
     session?.values.user_id
   );
   return c.json(book, httpStatus.OK as StatusCode);
@@ -57,7 +57,7 @@ bookRoute.put("/:id", async (c) => {
     session.values.user_id,
     book_id,
     body,
-    c.env.DATABASE_URL,
+    { Bindings: c.env },
     c.env.IMAGES
   );
   return c.json(book, httpStatus.OK as StatusCode);
@@ -81,7 +81,7 @@ bookRoute.delete("/:id", async (c) => {
   await deleteBook(
     book_id,
     session.values.user_id,
-    c.env.DATABASE_URL,
+    { Bindings: c.env },
     c.env.IMAGES
   );
   c.status(httpStatus.NO_CONTENT as StatusCode);
@@ -104,11 +104,9 @@ bookRoute.post("/", async (c) => {
   }
   const bodyParse = await c.req.json();
   const body = await bookValidation.createBook.parseAsync(bodyParse);
-  const book = await createBook(
-    body,
-    session.values.user_id,
-    c.env.DATABASE_URL
-  );
+  const book = await createBook(body, session.values.user_id, {
+    Bindings: c.env,
+  });
   return c.json(book, httpStatus.CREATED as StatusCode);
 });
 

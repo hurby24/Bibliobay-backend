@@ -1,6 +1,7 @@
 export type Environment = {
   Bindings: {
     DATABASE_URL: string;
+    DB: D1Database;
     IMAGES: R2Bucket;
     HMACsecret: string;
     AWS_ACCESS_KEY_ID: string;
@@ -10,6 +11,4 @@ export type Environment = {
     TURNSTILE_SECRET: string;
     MY_RATE_LIMITER: any;
   };
-  // Variables: {
-  // };
 };

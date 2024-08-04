@@ -1,4 +1,4 @@
-import { createDatabaseConnection } from "../db/connection";
+import { drizzle } from "drizzle-orm/d1";
 import { Redis } from "@upstash/redis/cloudflare";
 import { Environment } from "../../bindings";
 import { email_verification_codes, users } from "../db/schema";
@@ -104,7 +104,7 @@ export const deleteSession = async (id: string, Env: Environment) => {
   }
 };
 
-export const sessionCookie = async (expires_in: number) => {
+export const sessionCookie: any = async (expires_in: number) => {
   let expires = new TimeSpan(expires_in, "d").seconds();
   let expirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
@@ -115,8 +115,8 @@ export const sessionCookie = async (expires_in: number) => {
   return properities;
 };
 
-export const createOTP = async (user: any, databaseConfig: string) => {
-  const db = await createDatabaseConnection(databaseConfig);
+export const createOTP = async (user: any, Env: Environment) => {
+  const db = drizzle(Env.Bindings.DB);
   await db
     .delete(email_verification_codes)
     .where(eq(email_verification_codes.user_id, user.id));
@@ -126,7 +126,7 @@ export const createOTP = async (user: any, databaseConfig: string) => {
     code: code,
     user_id: user.id,
     email: user.email,
-    expires_at: createDate(new TimeSpan(15, "m")),
+    expires_at: new Date(new Date().getTime() + 15 * 60000).toISOString(),
   };
   try {
     result = await db
@@ -146,11 +146,11 @@ export const createOTP = async (user: any, databaseConfig: string) => {
 export const verifyOTP = async (
   user_id: string,
   code: string,
-  databaseConfig: string
+  Env: Environment
 ): Promise<boolean> => {
-  const db = await createDatabaseConnection(databaseConfig);
-  const verified = await db.transaction(async (trx) => {
-    const verification = await trx
+  const db = drizzle(Env.Bindings.DB);
+  try {
+    const verification = await db
       .select()
       .from(email_verification_codes)
       .where(eq(email_verification_codes.user_id, user_id));
@@ -158,7 +158,6 @@ export const verifyOTP = async (
     if (verification.length === 0) {
       return false;
     }
-
     const verificationCode = verification[0];
 
     if (
@@ -167,11 +166,18 @@ export const verifyOTP = async (
     ) {
       return false;
     }
-    await trx
+
+    await db
       .update(users)
-      .set({ email_confirmed_at: new Date() })
+      .set({ email_confirmed_at: new Date().toISOString() })
       .where(eq(users.id, user_id));
+
     return true;
-  });
-  return verified;
+  } catch (error) {
+    console.log(error);
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to verify OTP"
+    );
+  }
 };

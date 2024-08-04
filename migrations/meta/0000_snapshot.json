@@ -1,30 +1,32 @@
 {
-  "id": "db8a9ac2-437e-482f-920b-171c847f52bb",
-  "prevId": "10fbd3a5-4e61-4a3e-8408-5f7e8cdc6966",
   "version": "6",
-  "dialect": "postgresql",
+  "dialect": "sqlite",
+  "id": "0d0e8918-ae86-4ed2-a9ce-e985b4217b50",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "public.book_genres": {
+    "book_genres": {
       "name": "book_genres",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "integer",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": true
         },
         "book_id": {
           "name": "book_id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "genre_id": {
           "name": "genre_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
@@ -59,27 +61,29 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "public.book_shelves": {
+    "book_shelves": {
       "name": "book_shelves",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "integer",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": true
         },
         "book_id": {
           "name": "book_id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "shelf_id": {
           "name": "shelf_id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
@@ -114,101 +118,123 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "public.books": {
+    "books": {
       "name": "books",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "user_id": {
           "name": "user_id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "slug": {
           "name": "slug",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "title": {
           "name": "title",
-          "type": "varchar(150)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "author": {
           "name": "author",
-          "type": "varchar(150)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "cover_url": {
           "name": "cover_url",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "rating": {
           "name": "rating",
-          "type": "numeric(3, 1)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false
         },
         "pages": {
           "name": "pages",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "current_page": {
           "name": "current_page",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
+          "autoincrement": false,
           "default": 0
         },
-        "favortie": {
-          "name": "favortie",
-          "type": "boolean",
+        "favorite": {
+          "name": "favorite",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
           "default": false
         },
         "finished": {
           "name": "finished",
-          "type": "boolean",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
           "default": false
         },
         "private": {
           "name": "private",
-          "type": "boolean",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
           "default": false
         },
         "update_at": {
           "name": "update_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "books_slug_unique": {
+          "name": "books_slug_unique",
+          "columns": [
+            "slug"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "books_user_id_users_id_fk": {
           "name": "books_user_id_users_id_fk",
@@ -225,52 +251,63 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "books_slug_unique": {
-          "name": "books_slug_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
-        }
-      }
+      "uniqueConstraints": {}
     },
-    "public.email_verification_codes": {
+    "email_verification_codes": {
       "name": "email_verification_codes",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "integer",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": true
         },
         "code": {
           "name": "code",
-          "type": "varchar(6)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "user_id": {
           "name": "user_id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "email": {
           "name": "email",
-          "type": "varchar(200)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "email_verification_codes_user_id_unique": {
+          "name": "email_verification_codes_user_id_unique",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": true
+        },
+        "email_verification_codes_email_unique": {
+          "name": "email_verification_codes_email_unique",
+          "columns": [
+            "email"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "email_verification_codes_user_id_users_id_fk": {
           "name": "email_verification_codes_user_id_users_id_fk",
@@ -287,109 +324,111 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "email_verification_codes_user_id_unique": {
-          "name": "email_verification_codes_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
-        },
-        "email_verification_codes_email_unique": {
-          "name": "email_verification_codes_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      }
+      "uniqueConstraints": {}
     },
-    "public.genres": {
+    "genres": {
       "name": "genres",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "integer",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": true
         },
         "name": {
           "name": "name",
-          "type": "varchar(50)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
+      "indexes": {
         "genres_name_unique": {
           "name": "genres_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "name"
-          ]
+          ],
+          "isUnique": true
         }
-      }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
     },
-    "public.shelves": {
+    "shelves": {
       "name": "shelves",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "user_id": {
           "name": "user_id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "slug": {
           "name": "slug",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "name": {
           "name": "name",
-          "type": "varchar(50)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "description": {
           "name": "description",
-          "type": "varchar(255)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false
         },
         "private": {
           "name": "private",
-          "type": "boolean",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
           "default": false
         },
         "update_at": {
           "name": "update_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "shelves_slug_unique": {
+          "name": "shelves_slug_unique",
+          "columns": [
+            "slug"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "shelves_user_id_users_id_fk": {
           "name": "shelves_user_id_users_id_fk",
@@ -406,123 +445,130 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "shelves_slug_unique": {
-          "name": "shelves_slug_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
-        }
-      }
+      "uniqueConstraints": {}
     },
-    "public.users": {
+    "users": {
       "name": "users",
-      "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "char(21)",
+          "type": "text",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "username": {
           "name": "username",
-          "type": "varchar(25)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "email": {
           "name": "email",
-          "type": "varchar(200)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "bio": {
           "name": "bio",
-          "type": "varchar(255)",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false
         },
         "avatar": {
           "name": "avatar",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "autoincrement": false
         },
         "banner": {
           "name": "banner",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false
         },
         "email_confirmed_at": {
           "name": "email_confirmed_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
         },
         "is_banned": {
           "name": "is_banned",
-          "type": "boolean",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
           "default": false
         },
         "private": {
           "name": "private",
-          "type": "boolean",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false,
           "default": false
         },
         "last_sign_in_at": {
           "name": "last_sign_in_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
         },
         "update_at": {
           "name": "update_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
+      "indexes": {
         "users_username_unique": {
           "name": "users_username_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "username"
-          ]
+          ],
+          "isUnique": true
         },
         "users_email_unique": {
           "name": "users_email_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ]
+          ],
+          "isUnique": true
         }
-      }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
     }
   },
   "enums": {},
-  "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
   }
 }

@@ -29,7 +29,7 @@ userRoute.get("/", async (c) => {
   if (!q) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Query parameter is required");
   }
-  const users = await searchUsers(q, page, limit, c.env.DATABASE_URL);
+  const users = await searchUsers(q, page, limit, { Bindings: c.env });
   return c.json(users, httpStatus.OK as StatusCode);
 });
 
@@ -47,10 +47,9 @@ userRoute.get("/me", async (c) => {
   if (!session.values.email_verified) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
-  const userProfile = await getUserProfile(
-    session.values.user_id,
-    c.env.DATABASE_URL
-  );
+  const userProfile = await getUserProfile(session.values.user_id, {
+    Bindings: c.env,
+  });
 
   return c.json(userProfile, httpStatus.OK as StatusCode);
 });
@@ -67,7 +66,7 @@ userRoute.get("/:username", async (c) => {
   let username = c.req.param("username");
   const userProfile = await getUserProfile(
     session?.values.user_id,
-    c.env.DATABASE_URL,
+    { Bindings: c.env },
     username
   );
   return c.json(userProfile, httpStatus.OK as StatusCode);

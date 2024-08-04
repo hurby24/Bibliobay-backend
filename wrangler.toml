@@ -1,8 +1,6 @@
 name = "bibliobay-rest-api"
 compatibility_date = "2023-12-01"
 
-# [vars]
-# MY_VAR = "my-variable"
 
 [[unsafe.bindings]]
 name = "MY_RATE_LIMITER"
@@ -14,3 +12,8 @@ simple = { limit = 15, period = 10 }
 [[r2_buckets]]
 binding = "IMAGES"
 bucket_name = "images"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bibliobay"
+database_id = "3583effb-939c-40cf-9a60-65835f1c8998"

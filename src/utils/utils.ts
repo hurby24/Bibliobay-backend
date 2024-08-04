@@ -1,4 +1,4 @@
-import { PgSelectQueryBuilder } from "drizzle-orm/pg-core";
+import { SQLiteSelectQueryBuilder } from "drizzle-orm/sqlite-core";
 
 interface CaptchaResponse {
   success: boolean;
@@ -62,7 +62,7 @@ export async function validateCaptcha(
   return outcome.success;
 }
 
-export function withPagination<T extends PgSelectQueryBuilder>(
+export function withPagination<T extends SQLiteSelectQueryBuilder>(
   qb: T,
   maxlimit: number = 25,
   page: string = "1",

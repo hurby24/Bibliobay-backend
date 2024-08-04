@@ -28,7 +28,7 @@ settingRoute.get("/", async (c) => {
   if (!session.values.email_verified) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
-  const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
+  const user = await getUser(session.values.user_id, { Bindings: c.env });
 
   return c.json(user, httpStatus.OK as StatusCode);
 });
@@ -50,11 +50,9 @@ settingRoute.put("/", async (c) => {
   const bodyParse = await c.req.json();
   const body = await userUpdate.parseAsync(bodyParse);
 
-  const user = await updateUser(
-    session.values.user_id,
-    body,
-    c.env.DATABASE_URL
-  );
+  const user = await updateUser(session.values.user_id, body, {
+    Bindings: c.env,
+  });
 
   return c.json(user, httpStatus.OK as StatusCode);
 });
@@ -109,11 +107,9 @@ settingRoute.put(
 
     let url = `https://images.bibliobay.net/${key}`;
     const updatebody = { avatar: url };
-    const user = await updateUser(
-      session.values.user_id,
-      updatebody,
-      c.env.DATABASE_URL
-    );
+    const user = await updateUser(session.values.user_id, updatebody, {
+      Bindings: c.env,
+    });
 
     return c.json(user, httpStatus.OK as StatusCode);
   }
@@ -169,11 +165,9 @@ settingRoute.put(
 
     let url = `https://images.bibliobay.net/${key}`;
     const updatebody = { banner: url };
-    const user = await updateUser(
-      session.values.user_id,
-      updatebody,
-      c.env.DATABASE_URL
-    );
+    const user = await updateUser(session.values.user_id, updatebody, {
+      Bindings: c.env,
+    });
 
     return c.json(user, httpStatus.OK as StatusCode);
   }
@@ -193,7 +187,7 @@ settingRoute.delete("/avatar", async (c) => {
   if (!session.values.email_verified) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
-  const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
+  const user = await getUser(session.values.user_id, { Bindings: c.env });
   if (
     user.avatar ==
     "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random"
@@ -206,11 +200,9 @@ settingRoute.delete("/avatar", async (c) => {
   };
   const deleteUrl: string = user.avatar.split("/").pop() as string;
   await c.env.IMAGES.delete(deleteUrl);
-  const updatedUser = await updateUser(
-    session.values.user_id,
-    updatebody,
-    c.env.DATABASE_URL
-  );
+  const updatedUser = await updateUser(session.values.user_id, updatebody, {
+    Bindings: c.env,
+  });
   return c.json(updatedUser, httpStatus.OK as StatusCode);
 });
 
@@ -228,7 +220,7 @@ settingRoute.delete("/banner", async (c) => {
   if (!session.values.email_verified) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
-  const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
+  const user = await getUser(session.values.user_id, { Bindings: c.env });
   if (!user.banner) {
     return c.json(user, httpStatus.OK as StatusCode);
   }
@@ -240,10 +232,8 @@ settingRoute.delete("/banner", async (c) => {
   }
   const deleteUrl: string = user.banner.split("/").pop() as string;
   await c.env.IMAGES.delete(deleteUrl);
-  const updatedUser = await updateUser(
-    session.values.user_id,
-    updatebody,
-    c.env.DATABASE_URL
-  );
+  const updatedUser = await updateUser(session.values.user_id, updatebody, {
+    Bindings: c.env,
+  });
   return c.json(updatedUser, httpStatus.OK as StatusCode);
 });

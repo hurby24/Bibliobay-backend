@@ -33,11 +33,9 @@ shelfRoute.post("/", async (c) => {
 
   const bodyParse = await c.req.json();
   const body = await shelfValidation.createShelf.parseAsync(bodyParse);
-  const shelf = await createShelf(
-    session.values.user_id,
-    body,
-    c.env.DATABASE_URL
-  );
+  const shelf = await createShelf(session.values.user_id, body, {
+    Bindings: c.env,
+  });
 
   return c.json(shelf, httpStatus.CREATED as StatusCode);
 });
@@ -59,12 +57,9 @@ shelfRoute.put("/:id", async (c) => {
   let shelf_id = c.req.param("id");
   const bodyParse = await c.req.json();
   const body = await shelfValidation.updateShelf.parseAsync(bodyParse);
-  const shelf = await updateShelf(
-    session.values.user_id,
-    shelf_id,
-    body,
-    c.env.DATABASE_URL
-  );
+  const shelf = await updateShelf(session.values.user_id, shelf_id, body, {
+    Bindings: c.env,
+  });
   return c.json(shelf, httpStatus.OK as StatusCode);
 });
 
@@ -83,7 +78,7 @@ shelfRoute.delete("/:id", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
   let shelf_id = c.req.param("id");
-  await deleteShelf(session.values.user_id, shelf_id, c.env.DATABASE_URL);
+  await deleteShelf(session.values.user_id, shelf_id, { Bindings: c.env });
 
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);

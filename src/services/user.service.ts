@@ -1,6 +1,10 @@
-import { createDatabaseConnection } from "../db/connection";
+import { drizzle } from "drizzle-orm/d1";
+import { Environment } from "../../bindings";
 import { books, users, shelves } from "../db/schema";
-import { PgSelectQueryBuilder, QueryBuilder } from "drizzle-orm/pg-core";
+import {
+  SQLiteSelectQueryBuilder,
+  QueryBuilder,
+} from "drizzle-orm/sqlite-core";
 import { eq, and, like, count, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import httpStatus from "http-status";
@@ -8,9 +12,9 @@ import { ApiError } from "../utils/ApiError";
 import { spaceSlug, verb, digits, noun } from "space-slug";
 import { withPagination } from "../utils/utils";
 
-export const CreateUser = async (email: string, databaseConfig: string) => {
+export const CreateUser = async (email: string, Env: Environment) => {
   let result;
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
   const id = nanoid();
   const username = spaceSlug([verb(1), noun(1), digits(5)], {
     separator: "-",
@@ -37,16 +41,18 @@ export const CreateUser = async (email: string, databaseConfig: string) => {
   return result[0];
 };
 
-export const loginUser = async (email: string, databaseConfig: string) => {
+export const loginUser = async (email: string, Env: Environment) => {
   let result;
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
+
   try {
     result = await db
       .update(users)
-      .set({ last_sign_in_at: new Date() })
+      .set({ last_sign_in_at: new Date().toISOString() })
       .where(eq(users.email, email))
       .returning();
   } catch (error) {
+    console.log(error);
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to login");
   }
   if (result.length === 0) {
@@ -55,9 +61,9 @@ export const loginUser = async (email: string, databaseConfig: string) => {
   return result[0];
 };
 
-export const getUser = async (id: string, databaseConfig: string) => {
+export const getUser = async (id: string, Env: Environment) => {
   let result;
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
   try {
     result = await db.select().from(users).where(eq(users.id, id));
   } catch (error) {
@@ -73,10 +79,10 @@ export const getUser = async (id: string, databaseConfig: string) => {
 export const updateUser = async (
   id: string,
   userData: any,
-  databaseConfig: string
+  Env: Environment
 ) => {
   let result;
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
   if (Object.keys(userData).length === 0) {
     throw new ApiError(httpStatus.BAD_REQUEST, "User data is empty");
   }
@@ -95,181 +101,187 @@ export const updateUser = async (
       "Failed to update user"
     );
   }
-  return result;
+  return result[0];
 };
 
 export const getUserProfile = async (
   id: string,
-  databaseConfig: string,
+  Env: Environment,
   username: string = ""
 ) => {
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
+
   try {
-    const result = await db.transaction(async (trx) => {
-      let user: any;
-      if (username !== "") {
-        user = await trx
-          .select()
-          .from(users)
-          .where(eq(users.username, username));
-      } else {
-        user = await trx.select().from(users).where(eq(users.id, id));
-      }
+    let user: any;
+    if (username !== "") {
+      user = await db.select().from(users).where(eq(users.username, username));
+    } else {
+      user = await db.select().from(users).where(eq(users.id, id));
+    }
 
-      if (!user || user.length === 0) {
-        throw new ApiError(httpStatus.NOT_FOUND, "User not found");
-      }
+    if (!user || user.length === 0) {
+      throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+    }
 
-      user = user[0];
-      const isCurrentUser = user.id === id;
+    user = user[0];
+    const isCurrentUser = user.id === id;
 
-      let bookCount = await trx
+    let counts = await db.batch([
+      db
         .select({ count: count() })
         .from(books)
-        .where(eq(books.user_id, user.id));
-
-      let bookThisYear = await trx
+        .where(eq(books.user_id, user.id)),
+      db
         .select({ count: count() })
         .from(books)
         .where(
           and(
             eq(books.user_id, user.id),
             eq(
-              sql`EXTRACT(YEAR FROM ${books.created_at})`,
-              new Date().getFullYear()
+              sql`strftime('%Y', ${books.created_at})`,
+              new Date().getFullYear().toString()
             )
           )
-        );
-      let shelfCount = await trx
+        ),
+      db
         .select({ count: count() })
         .from(shelves)
-        .where(eq(shelves.user_id, user.id));
+        .where(eq(shelves.user_id, user.id)),
+    ]);
 
-      if (!isCurrentUser && user.private) {
-        return {
-          user: {
-            id: user.id,
-            username: user.username,
-            bio: user.bio,
-            avatar: user.avatar,
-            banner: user.banner,
-            bookCount: bookCount[0].count,
-            bookThisYear: bookThisYear[0].count,
-            shelfCount: shelfCount[0].count,
-            private: user.isPrivate,
-            created_at: user.createdAt,
-          },
-          books: {
-            favorites: [],
-            reading: [],
-            read: [],
-          },
-          shelves: [],
-        };
-      }
-      const qb = new QueryBuilder();
-      let userBooks = qb
-        .select()
-        .from(books)
-        .where(eq(books.user_id, user.id))
-        .$dynamic();
+    let bookCount = counts[0];
+    let bookThisYear = counts[1];
+    let shelfCount = counts[2];
 
-      let userShelves = await trx
-        .select()
-        .from(shelves)
-        .where(eq(shelves.user_id, user.id));
-
-      function ByStatus<T extends PgSelectQueryBuilder>(
-        qb: T,
-        status: string,
-        privateBooks: boolean = false
-      ) {
-        if (status === "favorites") {
-          if (privateBooks) {
-            return qb.where(eq(books.favorite, true)).limit(5);
-          } else {
-            return qb
-              .where(and(eq(books.favorite, true), eq(books.private, false)))
-              .limit(5);
-          }
-        }
-        if (status === "reading") {
-          if (privateBooks) {
-            return qb.where(eq(books.finished, false)).limit(5);
-          } else {
-            return qb
-              .where(and(eq(books.finished, false), eq(books.private, false)))
-              .limit(5);
-          }
-        }
-        if (status === "read") {
-          if (privateBooks) {
-            return qb.where(eq(books.finished, true)).limit(5);
-          } else {
-            return qb
-              .where(and(eq(books.finished, true), eq(books.private, false)))
-              .limit(5);
-          }
-        }
-      }
-
-      if (!isCurrentUser && !user.isPrivate) {
-        ByStatus(userBooks, "reading", false);
-        let reading = (await trx.execute(userBooks)).rows;
-        ByStatus(userBooks, "read", false);
-        let read = (await trx.execute(userBooks)).rows;
-        ByStatus(userBooks, "favorites", false);
-        let favorite = (await trx.execute(userBooks)).rows;
-
-        userShelves = userShelves.filter((shelf: any) => !shelf.isPrivate);
-        return {
-          user: {
-            id: user.id,
-            username: user.username,
-            bio: user.bio,
-            avatar: user.avatar,
-            banner: user.banner,
-            bookCount: bookCount[0].count,
-            bookThisYear: bookThisYear[0].count,
-            shelfCount: shelfCount[0].count,
-            private: user.isPrivate,
-            created_at: user.createdAt,
-          },
-          books: {
-            favorites: favorite,
-            reading: reading,
-            read: read,
-          },
-          shelves: userShelves,
-        };
-      }
-
-      if (isCurrentUser) {
-        ByStatus(userBooks, "reading", true);
-        let reading = (await trx.execute(userBooks)).rows;
-        ByStatus(userBooks, "read", true);
-        let read = (await trx.execute(userBooks)).rows;
-        ByStatus(userBooks, "favorites", true);
-        let favorite = (await trx.execute(userBooks)).rows;
-        user = {
-          ...user,
+    if (!isCurrentUser && user.private) {
+      return {
+        user: {
+          id: user.id,
+          username: user.username,
+          bio: user.bio,
+          avatar: user.avatar,
+          banner: user.banner,
           bookCount: bookCount[0].count,
           bookThisYear: bookThisYear[0].count,
           shelfCount: shelfCount[0].count,
-        };
-        return {
-          user: user,
-          books: {
-            favorites: favorite,
-            reading: reading,
-            read: read,
-          },
-          shelves: userShelves,
-        };
+          private: user.isPrivate,
+          created_at: user.createdAt,
+        },
+        books: {
+          favorites: [],
+          reading: [],
+          read: [],
+        },
+        shelves: [],
+      };
+    }
+
+    const qb = new QueryBuilder();
+    let userBooks = qb
+      .select()
+      .from(books)
+      .where(eq(books.user_id, user.id))
+      .$dynamic();
+
+    let userShelves = await db
+      .select()
+      .from(shelves)
+      .where(eq(shelves.user_id, user.id));
+
+    function ByStatus<T extends SQLiteSelectQueryBuilder>(
+      qb: T,
+      status: string,
+      privateBooks: boolean = false
+    ) {
+      if (status === "favorites") {
+        if (privateBooks) {
+          return qb.where(eq(books.favorite, true)).limit(5);
+        } else {
+          return qb
+            .where(and(eq(books.favorite, true), eq(books.private, false)))
+            .limit(5);
+        }
       }
+      if (status === "reading") {
+        if (privateBooks) {
+          return qb.where(eq(books.finished, false)).limit(5);
+        } else {
+          return qb
+            .where(and(eq(books.finished, false), eq(books.private, false)))
+            .limit(5);
+        }
+      }
+      if (status === "read") {
+        if (privateBooks) {
+          return qb.where(eq(books.finished, true)).limit(5);
+        } else {
+          return qb
+            .where(and(eq(books.finished, true), eq(books.private, false)))
+            .limit(5);
+        }
+      }
+    }
+
+    const convertToBoolean = (book: any) => ({
+      ...book,
+      favorite: book.favorite === 1,
+      finished: book.finished === 1,
+      private: book.private === 1,
     });
 
-    return result;
+    if (!isCurrentUser && !user.isPrivate) {
+      ByStatus(userBooks, "reading", false);
+      let reading = (await db.run(userBooks)).results.map(convertToBoolean);
+      ByStatus(userBooks, "read", false);
+      let read = (await db.run(userBooks)).results.map(convertToBoolean);
+      ByStatus(userBooks, "favorites", false);
+      let favorite = (await db.run(userBooks)).results.map(convertToBoolean);
+
+      userShelves = userShelves.filter((shelf: any) => !shelf.private);
+      return {
+        user: {
+          id: user.id,
+          username: user.username,
+          bio: user.bio,
+          avatar: user.avatar,
+          banner: user.banner,
+          bookCount: bookCount[0].count,
+          bookThisYear: bookThisYear[0].count,
+          shelfCount: shelfCount[0].count,
+          private: user.isPrivate,
+          created_at: user.createdAt,
+        },
+        books: {
+          favorites: favorite,
+          reading: reading,
+          read: read,
+        },
+        shelves: userShelves,
+      };
+    }
+    if (isCurrentUser) {
+      ByStatus(userBooks, "reading", true);
+      let reading = (await db.run(userBooks)).results.map(convertToBoolean);
+      ByStatus(userBooks, "read", true);
+      let read = (await db.run(userBooks)).results.map(convertToBoolean);
+      ByStatus(userBooks, "favorites", true);
+      let favorite = (await db.run(userBooks)).results.map(convertToBoolean);
+      user = {
+        ...user,
+        bookCount: bookCount[0].count,
+        bookThisYear: bookThisYear[0].count,
+        shelfCount: shelfCount[0].count,
+      };
+      return {
+        user: user,
+        books: {
+          favorites: favorite,
+          reading: reading,
+          read: read,
+        },
+        shelves: userShelves,
+      };
+    }
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
@@ -282,11 +294,11 @@ export const searchUsers = async (
   username: string,
   page: string = "1",
   limit: string = "10",
-  databaseConfig: string
+  Env: Environment
 ) => {
   let result;
   let sanitizedUsername = username.trim().toLocaleLowerCase();
-  const db = await createDatabaseConnection(databaseConfig);
+  const db = drizzle(Env.Bindings.DB);
   const qb = new QueryBuilder();
   let query = qb
     .select({
@@ -309,6 +321,6 @@ export const searchUsers = async (
     .offset(0)
     .$dynamic();
   withPagination(query, 10, page, limit);
-  result = (await db.execute(query)).rows;
+  result = (await db.run(query)).results;
   return result;
 };

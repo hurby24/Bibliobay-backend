@@ -36,7 +36,7 @@ authRoute.post("/signup", async (c) => {
   if (!captcha) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid captcha");
   }
-  const user = await CreateUser(email, c.env.DATABASE_URL);
+  const user = await CreateUser(email, { Bindings: c.env });
   const session = await sessionService.CreateSession(
     user.id,
     { Bindings: c.env },
@@ -51,7 +51,7 @@ authRoute.post("/signup", async (c) => {
     expires: cookieData.expires,
     sameSite: "Lax",
   });
-  const otp = await sessionService.createOTP(user, c.env.DATABASE_URL);
+  const otp = await sessionService.createOTP(user, { Bindings: c.env });
   let userAgent = c.req.header("user-agent");
   userAgent = formatUserAgent(userAgent);
   await sendOtpEmail(
@@ -98,7 +98,7 @@ authRoute.post("/login", async (c) => {
   if (!captcha) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid captcha");
   }
-  const user = await loginUser(email, c.env.DATABASE_URL);
+  const user = await loginUser(email, { Bindings: c.env });
   const session = await sessionService.CreateSession(
     user.id,
     { Bindings: c.env },
@@ -113,7 +113,7 @@ authRoute.post("/login", async (c) => {
     expires: cookieData.expires,
     sameSite: "Lax",
   });
-  const otp = await sessionService.createOTP(user, c.env.DATABASE_URL);
+  const otp = await sessionService.createOTP(user, { Bindings: c.env });
   let userAgent = c.req.header("user-agent");
   userAgent = formatUserAgent(userAgent);
   await sendOtpEmail(
@@ -173,8 +173,8 @@ authRoute.post("/otp", async (c) => {
       "User is already verified. OTP cannot be sent again."
     );
   }
-  const user = await getUser(session.values.user_id, c.env.DATABASE_URL);
-  const otp = await sessionService.createOTP(user, c.env.DATABASE_URL);
+  const user = await getUser(session.values.user_id, { Bindings: c.env });
+  const otp = await sessionService.createOTP(user, { Bindings: c.env });
 
   let userAgent = c.req.header("user-agent");
   userAgent = formatUserAgent(userAgent);
@@ -210,11 +210,9 @@ authRoute.post("/verify", async (c) => {
   const bodyParse = await c.req.json();
   const body = await userValidation.otpAuth.parseAsync(bodyParse);
   const { otp } = body;
-  const veified = await sessionService.verifyOTP(
-    session.values.user_id,
-    otp,
-    c.env.DATABASE_URL
-  );
+  const veified = await sessionService.verifyOTP(session.values.user_id, otp, {
+    Bindings: c.env,
+  });
   if (!veified) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid OTP");
   }
