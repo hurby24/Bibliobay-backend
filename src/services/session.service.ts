@@ -146,8 +146,9 @@ export const createOTP = async (user: any, Env: Environment) => {
 export const verifyOTP = async (
   user_id: string,
   code: string,
+
   Env: Environment
-): Promise<boolean> => {
+): Promise<{ success: boolean; message: string }> => {
   const db = drizzle(Env.Bindings.DB);
   try {
     const verification = await db
@@ -156,15 +157,31 @@ export const verifyOTP = async (
       .where(eq(email_verification_codes.user_id, user_id));
 
     if (verification.length === 0) {
-      return false;
+      return { success: false, message: "Verification code not found." };
     }
-    const verificationCode = verification[0];
+    console.log(verification[0]);
+    const verificationUpdated = await db
+      .update(email_verification_codes)
+      .set({ attempts: verification[0].attempts - 1 })
+      .where(eq(email_verification_codes.user_id, user_id))
+      .returning();
 
+    const verificationCode = verificationUpdated[0];
+
+    if (verificationCode.attempts < 0) {
+      return {
+        success: false,
+        message: "Verification attempts exceeded. Please request a new code.",
+      };
+    }
     if (
       verificationCode.code !== code ||
       !isWithinExpirationDate(new Date(verificationCode.expires_at))
     ) {
-      return false;
+      return {
+        success: false,
+        message: "Invalid or expired verification code.",
+      };
     }
 
     await db
@@ -172,7 +189,7 @@ export const verifyOTP = async (
       .set({ email_confirmed_at: new Date().toISOString() })
       .where(eq(users.id, user_id));
 
-    return true;
+    return { success: true, message: "Email successfully verified." };
   } catch (error) {
     console.log(error);
     throw new ApiError(

@@ -1,0 +1,1 @@
+ALTER TABLE `email_verification_codes` ADD `attempts` integer DEFAULT 3 NOT NULL;

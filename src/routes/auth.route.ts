@@ -210,11 +210,18 @@ authRoute.post("/verify", async (c) => {
   const bodyParse = await c.req.json();
   const body = await userValidation.otpAuth.parseAsync(bodyParse);
   const { otp } = body;
-  const veified = await sessionService.verifyOTP(session.values.user_id, otp, {
+  const verified = await sessionService.verifyOTP(session.values.user_id, otp, {
     Bindings: c.env,
   });
-  if (!veified) {
-    throw new ApiError(httpStatus.BAD_REQUEST, "Invalid OTP");
+  if (!verified.success) {
+    if (
+      verified.message ===
+      "Verification attempts exceeded. Please request a new code."
+    ) {
+      throw new ApiError(httpStatus.TOO_MANY_REQUESTS, verified.message);
+    } else {
+      throw new ApiError(httpStatus.BAD_REQUEST, verified.message);
+    }
   }
   const newSession = await sessionService.CreateSession(
     session.values.user_id,

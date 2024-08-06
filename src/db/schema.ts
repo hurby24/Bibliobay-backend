@@ -186,6 +186,7 @@ export const email_verification_codes = sqliteTable(
       .unique()
       .references(() => users.id, { onDelete: "cascade" }),
     email: text("email").notNull().unique(),
+    attempts: integer("attempts").notNull().default(3),
     expires_at: text("expires_at").notNull(),
   }
 );
