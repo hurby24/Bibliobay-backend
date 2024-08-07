@@ -1,19 +1,12 @@
 {
-  "version": "7",
+  "version": "6",
   "dialect": "sqlite",
   "entries": [
     {
       "idx": 0,
       "version": "6",
-      "when": 1722766354269,
-      "tag": "0000_round_yellowjacket",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1722959827814,
-      "tag": "0001_luxuriant_sally_floyd",
+      "when": 1723063511136,
+      "tag": "0000_rapid_iron_monger",
       "breakpoints": true
     }
   ]

@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/d1";
 import { Environment } from "../../bindings";
-import { books, users, shelves } from "../db/schema";
+import { books, users, shelves, oauth_accounts } from "../db/schema";
 import {
   SQLiteSelectQueryBuilder,
   QueryBuilder,
@@ -12,7 +12,12 @@ import { ApiError } from "../utils/ApiError";
 import { spaceSlug, verb, digits, noun } from "space-slug";
 import { withPagination } from "../utils/utils";
 
-export const CreateUser = async (email: string, Env: Environment) => {
+export const CreateUser = async (
+  email: string,
+  Env: Environment,
+  profile: string = "",
+  confirmed = false
+) => {
   let result;
   const db = drizzle(Env.Bindings.DB);
   const id = nanoid();
@@ -31,7 +36,10 @@ export const CreateUser = async (email: string, Env: Environment) => {
     username: username,
     email: email,
     bio: "",
-    avatar: `https://ui-avatars.com/api/?name=${username}&size=300&bold=true&background=random`,
+    avatar: !profile
+      ? "https://ui-avatars.com/api/?name=${username}&size=300&bold=true&background=random"
+      : profile,
+    email_confirmed_at: confirmed ? new Date().toISOString() : null,
   };
   try {
     result = await db.insert(users).values(user).returning();
@@ -59,6 +67,62 @@ export const loginUser = async (email: string, Env: Environment) => {
     throw new ApiError(httpStatus.BAD_REQUEST, "User does not exist");
   }
   return result[0];
+};
+
+export const oauthLink = async (oauthData: any, Env: Environment) => {
+  let result;
+  const db = drizzle(Env.Bindings.DB);
+
+  try {
+    const existingAccount = await db
+      .select()
+      .from(oauth_accounts)
+      .where(
+        and(
+          eq(oauth_accounts.provider_id, oauthData.provider),
+          eq(oauth_accounts.provider_user_id, oauthData.provider_id)
+        )
+      );
+
+    if (existingAccount.length > 0) {
+      return existingAccount[0].user_id;
+    }
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, oauthData.email));
+
+    if (existingUser.length > 0) {
+      await db.insert(oauth_accounts).values({
+        user_id: existingUser[0].id,
+        provider_id: oauthData.provider,
+        provider_user_id: oauthData.provider_id,
+      });
+
+      return existingUser[0].id;
+    }
+
+    const newUser = await CreateUser(
+      oauthData.email,
+      Env,
+      oauthData.avatar,
+      true
+    );
+    await db.insert(oauth_accounts).values({
+      user_id: newUser.id,
+      provider_id: oauthData.provider,
+      provider_user_id: oauthData.provider_id,
+    });
+    return newUser.id;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to link oauth"
+    );
+  }
 };
 
 export const getUser = async (id: string, Env: Environment) => {

@@ -10,6 +10,7 @@
     "@neondatabase/serverless": "^0.9.3",
     "@upstash/ratelimit": "^1.1.3",
     "@upstash/redis": "^1.31.3",
+    "arctic": "^1.9.2",
     "drizzle-orm": "^0.30.10",
     "hono": "^4.3.7",
     "http-status": "^1.7.4",

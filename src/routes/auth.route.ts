@@ -2,11 +2,27 @@ import { Hono } from "hono";
 import type { StatusCode } from "hono/utils/http-status";
 import { Environment } from "../../bindings";
 import httpStatus from "http-status";
+import {
+  Google,
+  generateState,
+  generateCodeVerifier,
+  OAuth2RequestError,
+} from "arctic";
 import * as userValidation from "../validations/user.validation";
-import { CreateUser, loginUser, getUser } from "../services/user.service";
+import {
+  CreateUser,
+  loginUser,
+  getUser,
+  oauthLink,
+} from "../services/user.service";
 import * as sessionService from "../services/session.service";
 import { ApiError } from "../utils/ApiError";
-import { setSignedCookie, getSignedCookie, setCookie } from "hono/cookie";
+import {
+  setSignedCookie,
+  getSignedCookie,
+  setCookie,
+  getCookie,
+} from "hono/cookie";
 import { createCsrfToken } from "../utils/csrftoken";
 import { sendOtpEmail } from "../services/email.service";
 import { formatUserAgent, validateCaptcha } from "../utils/utils";
@@ -193,6 +209,7 @@ authRoute.post("/otp", async (c) => {
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
 });
+
 authRoute.post("/verify", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID == null) {
@@ -250,4 +267,133 @@ authRoute.post("/verify", async (c) => {
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
 });
+
+authRoute.get("/google", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  if (sessionID != null) {
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session != null) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "User already logged in");
+    }
+  }
+  const google = new Google(
+    c.env.GOOGLE_CLIENT_ID,
+    c.env.GOOGLE_CLIENT_SECRET,
+    "https://bibliobay.net/auth/google"
+  );
+
+  const state = generateState();
+  const codeVerifier = generateCodeVerifier();
+  const url = await google.createAuthorizationURL(state, codeVerifier, {
+    scopes: ["profile", "email"],
+  });
+
+  setCookie(c, "state", state, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+    maxAge: 60 * 10,
+    sameSite: "Lax",
+  });
+  setCookie(c, "codeVerifier", codeVerifier, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+    maxAge: 60 * 10,
+    sameSite: "Lax",
+  });
+
+  return c.json({ url: url }, httpStatus.OK as StatusCode);
+});
+
+authRoute.get("/google/callback", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  if (sessionID != null) {
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session != null) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "User already logged in");
+    }
+  }
+  const { code, state } = c.req.query();
+  const savedState = getCookie(c, "state");
+  const codeVerifier = getCookie(c, "codeVerifier");
+
+  if (!code || !state || !savedState || !codeVerifier || state !== savedState) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Invalid request");
+  }
+
+  const google = new Google(
+    c.env.GOOGLE_CLIENT_ID,
+    c.env.GOOGLE_CLIENT_SECRET,
+    "https://bibliobay.net/auth/google"
+  );
+  try {
+    const { accessToken } = await google.validateAuthorizationCode(
+      code,
+      codeVerifier
+    );
+    console.log(accessToken);
+    const googleResponse = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    const googleData = (await googleResponse.json()) as {
+      id: string;
+      email: string;
+      picture: string;
+    };
+    const data = {
+      provider: "google",
+      provider_id: googleData.id,
+      email: googleData.email,
+      avatar: googleData.picture,
+    };
+
+    const user = await oauthLink(data, { Bindings: c.env });
+
+    const newSession = await sessionService.CreateSession(user, {
+      Bindings: c.env,
+    });
+    let cookieData = await sessionService.sessionCookie(10);
+    await setSignedCookie(c, "SID", newSession.id, c.env.HMACsecret, {
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      maxAge: cookieData.maxAge,
+      expires: cookieData.expires,
+      sameSite: "Lax",
+    });
+
+    const newcsrfToken = await createCsrfToken(newSession.id, c.env.HMACsecret);
+
+    setCookie(c, "csrftoken", newcsrfToken, {
+      path: "/",
+      secure: true,
+      sameSite: "Lax",
+    });
+
+    c.status(httpStatus.NO_CONTENT as StatusCode);
+    return c.body(null);
+  } catch (error) {
+    if (error instanceof OAuth2RequestError) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "Invalid request");
+    }
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Internal server error"
+    );
+  }
+});
+
 export default authRoute;
