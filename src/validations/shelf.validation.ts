@@ -11,3 +11,7 @@ export const updateShelf = z.strictObject({
   description: z.string().min(1).max(255).optional(),
   private: z.boolean().optional(),
 });
+
+export const addBookToShelf = z.strictObject({
+  book_id: z.string(),
+});

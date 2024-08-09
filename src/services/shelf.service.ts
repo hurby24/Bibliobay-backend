@@ -1,11 +1,68 @@
 import { drizzle } from "drizzle-orm/d1";
 import { Environment } from "../../bindings";
-import { books, users, shelves } from "../db/schema";
+import { books, users, shelves, book_shelves } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
 import { toUrlSafeString } from "../utils/utils";
+
+export const getShelf = async (
+  shelfId: string,
+  Env: Environment,
+  userId: string = ""
+) => {
+  const db = drizzle(Env.Bindings.DB);
+
+  try {
+    let shelf: any;
+    shelf = await db
+      .select()
+      .from(shelves)
+      .where(eq(shelves.id, shelfId))
+      .innerJoin(users, eq(shelves.user_id, users.id));
+
+    if (!shelf || shelf.length === 0) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
+    }
+    if (shelf[0].shelves.user_id != userId && shelf[0].shelves.private) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
+    }
+
+    let shelfBooks = db
+      .select({ books })
+      .from(book_shelves)
+      .innerJoin(books, eq(book_shelves.book_id, books.id))
+      .innerJoin(shelves, eq(book_shelves.shelf_id, shelves.id))
+      .where(eq(shelves.id, shelfId))
+      .$dynamic();
+
+    if (shelf[0].shelves.user_id != userId) {
+      shelfBooks = shelfBooks.where(eq(books.private, false));
+    }
+
+    let bookresults = (await db.run(shelfBooks)).results;
+
+    bookresults = bookresults.map((book: any) => ({
+      ...book,
+      favorite: book.favorite === 1,
+      finished: book.finished === 1,
+      private: book.private === 1,
+    }));
+    let user = {
+      id: shelf[0].users.id,
+      username: shelf[0].users.username,
+      avatar: shelf[0].users.avatar,
+    };
+
+    return { shelf: shelf[0].shelves, books: bookresults, user: user };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get shelf");
+  }
+};
 
 export const createShelf = async (
   user_id: string,
@@ -123,6 +180,110 @@ export const deleteShelf = async (
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
       "Failed to delete shelf"
+    );
+  }
+};
+
+export const addBookToShelf = async (
+  shelfId: string,
+  bookId: string,
+  userId: string,
+  Env: Environment
+) => {
+  const db = drizzle(Env.Bindings.DB);
+
+  try {
+    const [shelf] = await db
+      .select()
+      .from(shelves)
+      .where(eq(shelves.id, shelfId));
+
+    if (!shelf) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Shelf not found");
+    }
+    if (shelf.user_id !== userId) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+
+    const [book] = await db.select().from(books).where(eq(books.id, bookId));
+
+    if (!book) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Book not found");
+    }
+    if (book.user_id !== userId) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+
+    const [bookShelf] = await db
+      .select()
+      .from(book_shelves)
+      .where(
+        and(
+          eq(book_shelves.book_id, bookId),
+          eq(book_shelves.shelf_id, shelfId)
+        )
+      );
+
+    if (bookShelf) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "Book already in shelf");
+    }
+
+    await db
+      .insert(book_shelves)
+      .values({ book_id: bookId, shelf_id: shelfId });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to add book to shelf"
+    );
+  }
+};
+
+export const removeBookFromShelf = async (
+  shelfId: string,
+  bookId: string,
+  userId: string,
+  Env: Environment
+) => {
+  const db = drizzle(Env.Bindings.DB);
+
+  try {
+    const [bookShelf] = await db
+      .select()
+      .from(book_shelves)
+      .innerJoin(shelves, eq(book_shelves.shelf_id, shelves.id))
+      .where(
+        and(
+          eq(book_shelves.book_id, bookId),
+          eq(book_shelves.shelf_id, shelfId)
+        )
+      );
+
+    if (!bookShelf) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Book not found in shelf");
+    }
+    if (bookShelf.shelves.user_id !== userId) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+
+    await db
+      .delete(book_shelves)
+      .where(
+        and(
+          eq(book_shelves.book_id, bookId),
+          eq(book_shelves.shelf_id, shelfId)
+        )
+      );
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to remove book from shelf"
     );
   }
 };

@@ -12,7 +12,6 @@ export const getBook = async (
   Env: Environment,
   user_id: string = ""
 ) => {
-  let result;
   const db = drizzle(Env.Bindings.DB);
 
   try {
@@ -42,6 +41,7 @@ export const getBook = async (
           eq(book_genres.book_id, bookId)
         )
       );
+
     let user = {
       id: book[0].users.id,
       username: book[0].users.username,
