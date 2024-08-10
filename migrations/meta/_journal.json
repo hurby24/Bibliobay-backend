@@ -8,6 +8,27 @@
       "when": 1723063511136,
       "tag": "0000_rapid_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1723292995563,
+      "tag": "0001_tricky_warstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1723293949719,
+      "tag": "0002_pretty_boom_boom",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1723296093302,
+      "tag": "0003_hard_catseye",
+      "breakpoints": true
     }
   ]
 }

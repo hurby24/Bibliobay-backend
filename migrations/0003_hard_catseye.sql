@@ -1,0 +1,1 @@
+ALTER TABLE `books` ADD `finished_at` text DEFAULT NULL;

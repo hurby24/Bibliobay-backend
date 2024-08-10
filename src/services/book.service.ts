@@ -83,6 +83,7 @@ export const createBook = async (
     }
     if (book.pages == book.current_page) {
       book.finished = true;
+      book.finished_at = new Date().toISOString();
       if (!book.rating) {
         throw new ApiError(httpStatus.BAD_REQUEST, "Rating is required");
       }
@@ -197,6 +198,7 @@ export const updateBook = async (
     }
     if (update.current_page === update.pages) {
       update.finished = true;
+      update.finished_at = new Date().toISOString();
       update.rating =
         bookData.rating !== undefined
           ? Math.round(bookData.rating * 10) / 10

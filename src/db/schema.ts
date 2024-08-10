@@ -35,6 +35,7 @@ export const books = sqliteTable("books", {
   favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
   finished: integer("finished", { mode: "boolean" }).notNull().default(false),
   private: integer("private", { mode: "boolean" }).notNull().default(false),
+  finished_at: text("finished_at").default(sql`NULL`),
   updated_at: text("update_at").default(sql`NULL`),
   created_at: text("created_at")
     .notNull()
@@ -104,4 +105,18 @@ export const oauth_accounts = sqliteTable("oauth_accounts", {
     .references(() => users.id, {
       onDelete: "cascade",
     }),
+});
+
+export const goals = sqliteTable("goals", {
+  id: text("id").primaryKey(),
+  user_id: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  goal_type: text("type").notNull(),
+  target: integer("target").notNull(),
+  time: text("time").notNull(),
+  updated_at: text("update_at").default(sql`NULL`),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
 });

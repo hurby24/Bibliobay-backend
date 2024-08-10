@@ -3,6 +3,7 @@ import userRoute from "./users.route";
 import settingRoute from "./settings.route";
 import bookRoute from "./books.route";
 import shelfRoute from "./shelves.route";
+import goalRoute from "./goals.route";
 
 const base_path = "v0";
 
@@ -26,5 +27,9 @@ export const defaultRoutes = [
   {
     path: `/${base_path}/shelves`,
     route: shelfRoute,
+  },
+  {
+    path: `/${base_path}/goals`,
+    route: goalRoute,
   },
 ];
