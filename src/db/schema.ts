@@ -120,3 +120,29 @@ export const goals = sqliteTable("goals", {
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),
 });
+
+export const friends = sqliteTable("friends", {
+  id: text("id").primaryKey(),
+  user_id: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  friend_id: text("friend_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+
+export const friend_requests = sqliteTable("friend_requests", {
+  id: text("id").primaryKey(),
+  sender_id: text("sender_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  receiver_id: text("receiver_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});

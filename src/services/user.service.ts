@@ -37,7 +37,7 @@ export const CreateUser = async (
     email: email,
     bio: "",
     avatar: !profile
-      ? "https://ui-avatars.com/api/?name=${username}&size=300&bold=true&background=random"
+      ? `https://ui-avatars.com/api/?name=${username}&size=300&bold=true&background=random`
       : profile,
     email_confirmed_at: confirmed ? new Date().toISOString() : null,
   };
