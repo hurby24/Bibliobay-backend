@@ -6,7 +6,7 @@ import {
   QueryBuilder,
 } from "drizzle-orm/sqlite-core";
 import { eq, and, like, count, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
 import { spaceSlug, verb, digits, noun } from "space-slug";
@@ -20,6 +20,9 @@ export const CreateUser = async (
 ) => {
   let result;
   const db = drizzle(Env.Bindings.DB);
+  const alphabet =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const nanoid = customAlphabet(alphabet, 15);
   const id = nanoid();
   const username = spaceSlug([verb(1), noun(1), digits(5)], {
     separator: "-",
@@ -150,6 +153,7 @@ export const updateUser = async (
   if (Object.keys(userData).length === 0) {
     throw new ApiError(httpStatus.BAD_REQUEST, "User data is empty");
   }
+  userData.updated_at = new Date().toISOString();
   try {
     result = await db
       .update(users)
