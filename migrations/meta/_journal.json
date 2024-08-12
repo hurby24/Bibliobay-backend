@@ -36,6 +36,20 @@
       "when": 1723408928840,
       "tag": "0004_aspiring_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1723498236709,
+      "tag": "0005_warm_sleeper",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1723498404188,
+      "tag": "0006_flat_wildside",
+      "breakpoints": true
     }
   ]
 }
