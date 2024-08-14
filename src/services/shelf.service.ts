@@ -53,6 +53,7 @@ export const getShelf = async (
       id: shelf[0].users.id,
       username: shelf[0].users.username,
       avatar: shelf[0].users.avatar,
+      current_user: shelf[0].users.id === userId,
     };
 
     return { shelf: shelf[0].shelves, books: bookresults, user: user };

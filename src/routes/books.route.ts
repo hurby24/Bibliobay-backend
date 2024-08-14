@@ -19,6 +19,22 @@ const bookRoute = new Hono<Environment>();
 
 export default bookRoute;
 
+bookRoute.get("/", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  if (sessionID == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  const session = await sessionService.validSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
+  if (session == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  if (!session.values.email_verified) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+  }
+});
+
 bookRoute.get("/:id", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   let session;

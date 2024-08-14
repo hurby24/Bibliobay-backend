@@ -41,11 +41,12 @@ export const getBook = async (
           eq(book_genres.book_id, bookId)
         )
       );
-
+    book[0].books.belongs_to_cu = genre;
     let user = {
       id: book[0].users.id,
       username: book[0].users.username,
       avatar: book[0].users.avatar,
+      current_user: book[0].users.id === user_id,
     };
     return { book: book[0].books, genrse: genre, user: user };
   } catch (error) {
@@ -55,6 +56,8 @@ export const getBook = async (
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get book");
   }
 };
+
+export const getBooks = async () => {};
 
 export const createBook = async (
   book: any,
