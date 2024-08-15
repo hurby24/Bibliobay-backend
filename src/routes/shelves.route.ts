@@ -10,6 +10,7 @@ import {
   updateShelf,
   deleteShelf,
   getShelf,
+  getShelves,
   addBookToShelf,
   removeBookFromShelf,
 } from "../services/shelf.service";
@@ -42,7 +43,30 @@ shelfRoute.post("/", async (c) => {
 
   return c.json(shelf, httpStatus.CREATED as StatusCode);
 });
+shelfRoute.get("/", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  if (sessionID == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  const session = await sessionService.validSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
+  if (session == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  if (!session.values.email_verified) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+  }
 
+  const queries = c.req.query();
+  const queryData = shelfValidation.querySchema.safeParse(queries);
+
+  const shelves = await getShelves(session.values.user_id, queryData.data, {
+    Bindings: c.env,
+  });
+
+  return c.json(shelves, httpStatus.OK as StatusCode);
+});
 shelfRoute.get("/:id", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   let session;

@@ -1,11 +1,12 @@
 import { drizzle } from "drizzle-orm/d1";
 import { Environment } from "../../bindings";
-import { books, users, shelves, book_shelves } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { books, users, shelves, book_shelves, friends } from "../db/schema";
+import { QueryBuilder } from "drizzle-orm/sqlite-core";
+import { eq, and, or, sql, asc, desc } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
-import { toUrlSafeString } from "../utils/utils";
+import { toUrlSafeString, withPagination } from "../utils/utils";
 
 export const getShelf = async (
   shelfId: string,
@@ -62,6 +63,126 @@ export const getShelf = async (
       throw error;
     }
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get shelf");
+  }
+};
+
+export const getShelves = async (
+  user_id: string,
+  queries: any,
+  Env: Environment,
+  username: string = ""
+) => {
+  const db = drizzle(Env.Bindings.DB);
+
+  try {
+    let userQuery;
+    if (username !== "") {
+      userQuery = db.select().from(users).where(eq(users.username, username));
+    } else {
+      userQuery = db.select().from(users).where(eq(users.id, user_id));
+    }
+    const user = (await userQuery)[0];
+
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+    }
+
+    let isCurrentUser = false;
+    if (user_id) {
+      isCurrentUser = user.id === user_id;
+    }
+
+    let isFriend = false;
+    if (!isCurrentUser && user_id) {
+      const friend = await db
+        .select()
+        .from(friends)
+        .where(
+          or(
+            and(eq(friends.user_id, user_id), eq(friends.friend_id, user.id)),
+            and(eq(friends.user_id, user.id), eq(friends.friend_id, user_id))
+          )
+        );
+      isFriend = friend.length > 0;
+    }
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      banner: user.banner,
+      private: user.private,
+      friend: isFriend,
+    };
+    if (!isCurrentUser && !isFriend && user.private) {
+      return {
+        user: userData,
+        shelves: [],
+      };
+    }
+
+    const qb = new QueryBuilder();
+    const result = qb
+      .select({
+        shelf: shelves,
+        book_count: sql`
+    (
+      SELECT COUNT(*)
+      FROM ${book_shelves}
+      WHERE ${book_shelves}.shelf_id = ${shelves}.id
+    )`.as("book_count"),
+      })
+      .from(shelves)
+      .where(eq(shelves.user_id, user.id))
+      .limit(20)
+      .offset(0)
+      .$dynamic();
+
+    result.where(!isCurrentUser ? eq(books.private, false) : undefined);
+
+    if (queries?.sort) {
+      switch (queries.sort) {
+        case "created_at":
+          result.orderBy(
+            queries.order === "asc"
+              ? asc(shelves.created_at)
+              : desc(shelves.created_at)
+          );
+          break;
+        case "name":
+          result.orderBy(
+            queries.order === "asc" ? asc(shelves.name) : desc(shelves.name)
+          );
+          break;
+        case "book_count":
+          result.orderBy(
+            queries.order === "asc"
+              ? asc(sql`book_count`)
+              : desc(sql`book_count`)
+          );
+          break;
+      }
+    }
+
+    if (queries?.page) {
+      withPagination(result, 20, queries.page, queries.limit);
+    }
+
+    let results = await db.run(result);
+    let userShelves = results.results.map((shelf: any) => ({
+      ...shelf,
+      private: shelf.private === 1,
+    }));
+
+    return { user: userData, shelves: userShelves };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to get shelves"
+    );
   }
 };
 
