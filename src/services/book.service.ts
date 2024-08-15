@@ -1,11 +1,12 @@
 import { drizzle } from "drizzle-orm/d1";
 import { Environment } from "../../bindings";
-import { books, users, genres, book_genres } from "../db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { books, users, genres, book_genres, friends } from "../db/schema";
+import { eq, or, and, inArray, sql, asc, desc } from "drizzle-orm";
+import { QueryBuilder } from "drizzle-orm/sqlite-core";
 import { customAlphabet } from "nanoid";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
-import { toUrlSafeString } from "../utils/utils";
+import { toUrlSafeString, withPagination } from "../utils/utils";
 
 export const getBook = async (
   bookId: string,
@@ -57,7 +58,159 @@ export const getBook = async (
   }
 };
 
-export const getBooks = async () => {};
+export const getBooks = async (
+  user_id: string,
+  queries: any,
+  Env: Environment,
+  username: string = ""
+) => {
+  const db = drizzle(Env.Bindings.DB);
+
+  try {
+    let userQuery;
+    if (username !== "") {
+      userQuery = db.select().from(users).where(eq(users.username, username));
+    } else {
+      userQuery = db.select().from(users).where(eq(users.id, user_id));
+    }
+    const user = (await userQuery)[0];
+
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+    }
+
+    let isCurrentUser = false;
+    if (user_id) {
+      isCurrentUser = user.id === user_id;
+    }
+
+    let isFriend = false;
+    if (!isCurrentUser && user_id) {
+      const friend = await db
+        .select()
+        .from(friends)
+        .where(
+          or(
+            and(eq(friends.user_id, user_id), eq(friends.friend_id, user.id)),
+            and(eq(friends.user_id, user.id), eq(friends.friend_id, user_id))
+          )
+        );
+      isFriend = friend.length > 0;
+    }
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      banner: user.banner,
+      private: user.private,
+      friend: isFriend,
+    };
+    if (!isCurrentUser && !isFriend && user.private) {
+      return {
+        user: userData,
+        books: [],
+      };
+    }
+
+    const qb = new QueryBuilder();
+    const result = qb
+      .select({
+        book: books,
+        genres: sql`
+      (
+        SELECT json_group_array(
+          json_object('id', ${genres}.id, 'name', ${genres}.name)
+        ) 
+        FROM ${book_genres} 
+        JOIN ${genres} ON ${book_genres}.genre_id = ${genres}.id 
+        WHERE ${book_genres}.book_id = ${books}.id
+      )`.as("genres"),
+      })
+      .from(books)
+      .where(eq(books.user_id, user.id))
+      .limit(20)
+      .offset(0)
+      .$dynamic();
+
+    result.where(
+      and(
+        !isCurrentUser ? eq(books.private, false) : undefined,
+        queries?.state === "read" ? eq(books.finished, true) : undefined,
+        queries?.state === "reading" ? eq(books.finished, false) : undefined,
+        queries?.state === "favorite" ? eq(books.favorite, true) : undefined,
+        queries?.genre && queries.genre <= 30
+          ? inArray(
+              books.id,
+              db
+                .select({
+                  book_id: book_genres.book_id,
+                })
+                .from(book_genres)
+                .where(eq(book_genres.genre_id, queries.genre))
+            )
+          : undefined
+      )
+    );
+    if (queries?.sort) {
+      switch (queries.sort) {
+        case "created_at":
+          result.orderBy(
+            queries.order === "asc"
+              ? asc(books.created_at)
+              : desc(books.created_at)
+          );
+          break;
+        case "finished_at":
+          result.orderBy(
+            queries.order === "asc"
+              ? asc(books.finished_at)
+              : desc(books.finished_at)
+          );
+          break;
+        case "title":
+          result.orderBy(
+            queries.order === "asc" ? asc(books.title) : desc(books.title)
+          );
+          break;
+        case "author":
+          result.orderBy(
+            queries.order === "asc" ? asc(books.author) : desc(books.author)
+          );
+          break;
+        case "pages":
+          result.orderBy(
+            queries.order === "asc" ? asc(books.pages) : desc(books.pages)
+          );
+          break;
+      }
+    }
+    if (queries?.page) {
+      withPagination(result, 20, queries.page, queries.limit);
+    }
+
+    let results = (await db.run(result)).results;
+    const userBooks = results.map((book: any) => {
+      return {
+        ...book,
+        genres: JSON.parse(book.genres),
+        favorite: book.favorite === 1,
+        finished: book.finished === 1,
+        private: book.private === 1,
+      };
+    });
+
+    return {
+      user: userData,
+      books: userBooks,
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to get books");
+  }
+};
 
 export const createBook = async (
   book: any,
@@ -77,7 +230,7 @@ export const createBook = async (
   };
   try {
     const genreIds = book.genres || [];
-    console.log(genreIds);
+
     if (book.pages < book.current_page) {
       throw new ApiError(
         httpStatus.BAD_REQUEST,
@@ -90,7 +243,7 @@ export const createBook = async (
       if (!book.rating) {
         throw new ApiError(httpStatus.BAD_REQUEST, "Rating is required");
       }
-      book.rating = Math.round(book.rating * 10) / 10;
+      book.rating = Math.round(book.rating * 2) / 2;
     } else {
       book.finished = false;
       book.rating = null;
@@ -204,7 +357,7 @@ export const updateBook = async (
       update.finished_at = new Date().toISOString();
       update.rating =
         bookData.rating !== undefined
-          ? Math.round(bookData.rating * 10) / 10
+          ? Math.round(bookData.rating * 2) / 2
           : book.rating || null;
 
       if (update.rating === null) {

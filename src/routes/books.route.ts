@@ -8,6 +8,7 @@ import * as bookValidation from "../validations/book.validation";
 import { ApiError } from "../utils/ApiError";
 import {
   getBook,
+  getBooks,
   createBook,
   deleteBook,
   updateBook,
@@ -33,6 +34,15 @@ bookRoute.get("/", async (c) => {
   if (!session.values.email_verified) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
+
+  const queries = c.req.query();
+  const queryData = bookValidation.querySchema.safeParse(queries);
+  console.log(queryData.data);
+  let books = await getBooks(session?.values.user_id, queryData.data, {
+    Bindings: c.env,
+  });
+
+  return c.json(books, httpStatus.OK as StatusCode);
 });
 
 bookRoute.get("/:id", async (c) => {

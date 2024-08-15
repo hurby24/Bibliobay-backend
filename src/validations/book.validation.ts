@@ -42,3 +42,14 @@ export const updateBook = z.strictObject({
 });
 
 export const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+
+export const querySchema = z.strictObject({
+  sort: z
+    .enum(["title", "author", "pages", "created_at", "finished_at"])
+    .default("created_at"),
+  order: z.enum(["asc", "desc"]).default("desc"),
+  state: z.enum(["read", "reading", "favorite"]).optional(),
+  genre: z.string().regex(/^\d+$/).transform(Number).optional(),
+  page: z.string().regex(/^\d+$/).transform(Number).default("1"),
+  limit: z.string().regex(/^\d+$/).transform(Number).default("20"),
+});
