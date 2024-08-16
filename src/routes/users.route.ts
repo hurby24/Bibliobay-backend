@@ -6,6 +6,11 @@ import { getSignedCookie } from "hono/cookie";
 import * as sessionService from "../services/session.service";
 import { ApiError } from "../utils/ApiError";
 import { getUserProfile, searchUsers } from "../services/user.service";
+import { getBooks } from "../services/book.service";
+import { getShelves } from "../services/shelf.service";
+import { getFriends } from "../services/friend.service";
+import { BookQuerySchema } from "../validations/book.validation";
+import { ShelfQuerySchema } from "../validations/shelf.validation";
 
 const userRoute = new Hono<Environment>();
 
@@ -71,5 +76,76 @@ userRoute.get("/:username", async (c) => {
   );
   return c.json(userProfile, httpStatus.OK as StatusCode);
 });
-// /users/:username/books, /users/:username/shelves, /users/:username/stats
-userRoute.get("/:username/books", async (c) => {});
+
+userRoute.get("/:username/books", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  let session;
+  if (sessionID != null) {
+    session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+  }
+
+  let username = c.req.param("username");
+  const queries = c.req.query();
+  const queryData = BookQuerySchema.safeParse(queries);
+
+  let books = await getBooks(
+    session?.values.user_id,
+    queryData.data,
+    {
+      Bindings: c.env,
+    },
+    username
+  );
+  return c.json(books, httpStatus.OK as StatusCode);
+});
+
+userRoute.get("/:username/shelves", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  let session;
+  if (sessionID != null) {
+    session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+  }
+
+  let username = c.req.param("username");
+  const queries = c.req.query();
+  const queryData = ShelfQuerySchema.safeParse(queries);
+
+  const shelves = await getShelves(
+    session?.values.user_id,
+    queryData.data,
+    {
+      Bindings: c.env,
+    },
+    username
+  );
+
+  return c.json(shelves, httpStatus.OK as StatusCode);
+});
+
+userRoute.get("/:username/friends", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  let session;
+  if (sessionID != null) {
+    session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+  }
+
+  let username = c.req.param("username");
+
+  const { page, limit } = c.req.query();
+
+  const friends = await getFriends(
+    session?.values.user_id,
+    { Bindings: c.env },
+    page,
+    limit,
+    username
+  );
+
+  return c.json(friends, httpStatus.OK as StatusCode);
+});

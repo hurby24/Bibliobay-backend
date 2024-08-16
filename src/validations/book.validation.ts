@@ -43,7 +43,7 @@ export const updateBook = z.strictObject({
 
 export const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
-export const querySchema = z.strictObject({
+export const BookQuerySchema = z.strictObject({
   sort: z
     .enum(["title", "author", "pages", "created_at", "finished_at"])
     .default("created_at"),

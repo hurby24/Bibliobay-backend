@@ -43,6 +43,7 @@ shelfRoute.post("/", async (c) => {
 
   return c.json(shelf, httpStatus.CREATED as StatusCode);
 });
+
 shelfRoute.get("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID == null) {
@@ -59,7 +60,7 @@ shelfRoute.get("/", async (c) => {
   }
 
   const queries = c.req.query();
-  const queryData = shelfValidation.querySchema.safeParse(queries);
+  const queryData = shelfValidation.ShelfQuerySchema.safeParse(queries);
 
   const shelves = await getShelves(session.values.user_id, queryData.data, {
     Bindings: c.env,
@@ -67,6 +68,7 @@ shelfRoute.get("/", async (c) => {
 
   return c.json(shelves, httpStatus.OK as StatusCode);
 });
+
 shelfRoute.get("/:id", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   let session;

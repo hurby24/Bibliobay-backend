@@ -19,7 +19,7 @@ export const getFriends = async (
 
   try {
     let friendsList: any;
-    console.log("username", user_id);
+
     const qb = new QueryBuilder();
     if (username !== "") {
       friendsList = qb
@@ -36,7 +36,7 @@ export const getFriends = async (
             and(eq(friends.friend_id, users.id), eq(users.username, username))
           )
         )
-        .where(ne(users.username, username))
+        .where(eq(users.username, username))
         .$dynamic();
     } else {
       friendsList = qb
@@ -56,6 +56,7 @@ export const getFriends = async (
         .where(ne(users.id, user_id))
         .$dynamic();
     }
+    console.log(friendsList);
     withPagination(friendsList, 25, page, limit);
     const result = (await db.run(friendsList)).results;
     return result;

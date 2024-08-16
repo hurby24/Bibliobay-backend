@@ -16,7 +16,7 @@ export const addBookToShelf = z.strictObject({
   book_id: z.string(),
 });
 
-export const querySchema = z.strictObject({
+export const ShelfQuerySchema = z.strictObject({
   sort: z.enum(["name", "created_at", "book_count"]).default("created_at"),
   order: z.enum(["asc", "desc"]).default("desc"),
   page: z.string().regex(/^\d+$/).transform(Number).default("1"),
