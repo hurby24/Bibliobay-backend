@@ -12,5 +12,7 @@ export type Environment = {
     MY_RATE_LIMITER: any;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
+    LEMONSQUEEZY_API_KEY: string;
+    WEBHOOK_SECRET: string;
   };
 };

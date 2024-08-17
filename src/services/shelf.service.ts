@@ -82,7 +82,7 @@ export const getShelves = async (
       userQuery = db.select().from(users).where(eq(users.id, user_id));
     }
     const user = (await userQuery)[0];
-
+    console.log(user);
     if (!user) {
       throw new ApiError(httpStatus.NOT_FOUND, "User not found");
     }
@@ -138,7 +138,7 @@ export const getShelves = async (
       .offset(0)
       .$dynamic();
 
-    result.where(!isCurrentUser ? eq(books.private, false) : undefined);
+    result.where(!isCurrentUser ? eq(shelves.private, false) : undefined);
 
     if (queries?.sort) {
       switch (queries.sort) {

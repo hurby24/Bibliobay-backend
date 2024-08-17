@@ -36,7 +36,7 @@ bookRoute.get("/", async (c) => {
   }
 
   const queries = c.req.query();
-  const queryData = bookValidation.querySchema.safeParse(queries);
+  const queryData = bookValidation.BookQuerySchema.safeParse(queries);
 
   let books = await getBooks(session?.values.user_id, queryData.data, {
     Bindings: c.env,

@@ -5,6 +5,7 @@ import bookRoute from "./books.route";
 import shelfRoute from "./shelves.route";
 import goalRoute from "./goals.route";
 import friendRoute from "./friends.route";
+import subscriptionRoute from "./subscriptions.route";
 
 const base_path = "v0";
 
@@ -36,5 +37,9 @@ export const defaultRoutes = [
   {
     path: `/${base_path}`,
     route: friendRoute,
+  },
+  {
+    path: `/${base_path}/subscriptions`,
+    route: subscriptionRoute,
   },
 ];
