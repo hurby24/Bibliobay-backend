@@ -16,6 +16,9 @@ export const users = sqliteTable(
     bio: text("bio"),
     avatar: text("avatar").notNull(),
     banner: text("banner"),
+    supporter: integer("supporter", { mode: "boolean" })
+      .notNull()
+      .default(false),
     email_confirmed_at: text("email_confirmed_at").default(sql`NULL`),
     is_banned: integer("is_banned", { mode: "boolean" })
       .notNull()
@@ -199,7 +202,6 @@ export const subscriptions = sqliteTable("subscriptions", {
   ends_at: text("ends_at"),
   card_brand: text("card_brand"),
   card_last_four: text("card_last_four"),
-  update_payment_method_url: text("update_payment_method_url"),
   updated_at: text("update_at").default(sql`NULL`),
   created_at: text("created_at").notNull().default(new Date().toISOString()),
 });

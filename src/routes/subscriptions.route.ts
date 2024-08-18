@@ -8,10 +8,33 @@ import { ApiError } from "../utils/ApiError";
 import {
   createCheckoutURL,
   handleEvent,
+  getSubscription,
 } from "../services/subscription.service";
 import { HMAC } from "oslo/crypto";
 
 const subscriptionRoute = new Hono<Environment>();
+
+subscriptionRoute.get("/", async (c) => {
+  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+  if (sessionID == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  const session = await sessionService.validSession(sessionID.toString(), {
+    Bindings: c.env,
+  });
+  if (session == null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+  }
+  if (!session.values.email_verified) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+  }
+
+  const subscription = await getSubscription(session.values.user_id, {
+    Bindings: c.env,
+  });
+
+  return c.json(subscription, httpStatus.OK as StatusCode);
+});
 
 subscriptionRoute.post("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
@@ -58,9 +81,9 @@ subscriptionRoute.post("/webhook", async (c) => {
 
   const event = await c.req.json();
 
-  await handleEvent(event, { Bindings: c.env });
+  const success = await handleEvent(event, { Bindings: c.env });
 
-  return c.json({ success: true }, httpStatus.OK as StatusCode);
+  return c.json({ success: success }, httpStatus.OK as StatusCode);
 });
 
 export default subscriptionRoute;
