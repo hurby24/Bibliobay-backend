@@ -1,8 +1,7 @@
 import { drizzle } from "drizzle-orm/d1";
 import { Environment } from "../../bindings";
 import { users, subscriptions } from "../db/schema";
-import { eq, and, or } from "drizzle-orm";
-import { customAlphabet } from "nanoid";
+import { eq } from "drizzle-orm";
 import httpStatus from "http-status";
 import { ApiError } from "../utils/ApiError";
 

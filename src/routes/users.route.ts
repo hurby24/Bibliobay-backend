@@ -14,8 +14,6 @@ import { ShelfQuerySchema } from "../validations/shelf.validation";
 
 const userRoute = new Hono<Environment>();
 
-export default userRoute;
-
 userRoute.get("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID == null) {
@@ -149,3 +147,5 @@ userRoute.get("/:username/friends", async (c) => {
 
   return c.json(friends, httpStatus.OK as StatusCode);
 });
+
+export default userRoute;

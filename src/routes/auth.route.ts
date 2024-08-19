@@ -9,12 +9,7 @@ import {
   OAuth2RequestError,
 } from "arctic";
 import * as userValidation from "../validations/user.validation";
-import {
-  CreateUser,
-  loginUser,
-  getUser,
-  oauthLink,
-} from "../services/user.service";
+import * as userServices from "../services/user.service";
 import * as sessionService from "../services/session.service";
 import { ApiError } from "../utils/ApiError";
 import {
@@ -52,7 +47,7 @@ authRoute.post("/signup", async (c) => {
   if (!captcha) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid captcha");
   }
-  const user = await CreateUser(email, { Bindings: c.env });
+  const user = await userServices.CreateUser(email, { Bindings: c.env });
   const session = await sessionService.CreateSession(
     user.id,
     { Bindings: c.env },
@@ -114,7 +109,7 @@ authRoute.post("/login", async (c) => {
   if (!captcha) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid captcha");
   }
-  const user = await loginUser(email, { Bindings: c.env });
+  const user = await userServices.loginUser(email, { Bindings: c.env });
   const session = await sessionService.CreateSession(
     user.id,
     { Bindings: c.env },
@@ -189,7 +184,9 @@ authRoute.post("/otp", async (c) => {
       "User is already verified. OTP cannot be sent again."
     );
   }
-  const user = await getUser(session.values.user_id, { Bindings: c.env });
+  const user = await userServices.getUser(session.values.user_id, {
+    Bindings: c.env,
+  });
   const otp = await sessionService.createOTP(user, { Bindings: c.env });
 
   let userAgent = c.req.header("user-agent");
@@ -357,7 +354,7 @@ authRoute.get("/google/callback", async (c) => {
       avatar: googleData.picture,
     };
 
-    const user = await oauthLink(data, { Bindings: c.env });
+    const user = await userServices.oauthLink(data, { Bindings: c.env });
 
     const newSession = await sessionService.CreateSession(user, {
       Bindings: c.env,

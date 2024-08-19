@@ -42,7 +42,6 @@ export const getBook = async (
           eq(book_genres.book_id, bookId)
         )
       );
-    book[0].books.belongs_to_cu = genre;
     let user = {
       id: book[0].users.id,
       username: book[0].users.username,
@@ -104,6 +103,7 @@ export const getBooks = async (
       avatar: user.avatar,
       banner: user.banner,
       private: user.private,
+      supporter: user.supporter,
       friend: isFriend,
     };
     if (!isCurrentUser && !isFriend && user.private) {

@@ -6,16 +6,9 @@ import { getSignedCookie } from "hono/cookie";
 import { ApiError } from "../utils/ApiError";
 import * as sessionService from "../services/session.service";
 import * as goalValidation from "../validations/goal.validation";
-import {
-  createGoal,
-  getGoal,
-  updateGoal,
-  deleteGoal,
-} from "../services/goal.service";
+import * as goalService from "../services/goal.service";
 
 const goalRoute = new Hono<Environment>();
-
-export default goalRoute;
 
 goalRoute.post("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
@@ -34,7 +27,7 @@ goalRoute.post("/", async (c) => {
   const bodyParse = await c.req.json();
   const body = await goalValidation.createGoal.parseAsync(bodyParse);
 
-  const goal = await createGoal(session.values.user_id, body, {
+  const goal = await goalService.createGoal(session.values.user_id, body, {
     Bindings: c.env,
   });
 
@@ -56,7 +49,7 @@ goalRoute.get("/", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
 
-  const goal = await getGoal(session.values.user_id, {
+  const goal = await goalService.getGoal(session.values.user_id, {
     Bindings: c.env,
   });
 
@@ -82,9 +75,14 @@ goalRoute.put("/:id", async (c) => {
   const body = await goalValidation.updateGoal.parseAsync(bodyParse);
   const goal_id = c.req.param("id");
 
-  const goal = await updateGoal(session.values.user_id, goal_id, body, {
-    Bindings: c.env,
-  });
+  const goal = await goalService.updateGoal(
+    session.values.user_id,
+    goal_id,
+    body,
+    {
+      Bindings: c.env,
+    }
+  );
 
   return c.json(goal, httpStatus.OK as StatusCode);
 });
@@ -106,10 +104,12 @@ goalRoute.delete("/:id", async (c) => {
 
   const goal_id = c.req.param("id");
 
-  await deleteGoal(session.values.user_id, goal_id, {
+  await goalService.deleteGoal(session.values.user_id, goal_id, {
     Bindings: c.env,
   });
 
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
 });
+
+export default goalRoute;

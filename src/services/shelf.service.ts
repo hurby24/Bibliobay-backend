@@ -112,6 +112,7 @@ export const getShelves = async (
       avatar: user.avatar,
       banner: user.banner,
       private: user.private,
+      supporter: user.supporter,
       friend: isFriend,
     };
     if (!isCurrentUser && !isFriend && user.private) {

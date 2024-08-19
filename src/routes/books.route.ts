@@ -6,19 +6,11 @@ import { getSignedCookie } from "hono/cookie";
 import * as sessionService from "../services/session.service";
 import * as bookValidation from "../validations/book.validation";
 import { ApiError } from "../utils/ApiError";
-import {
-  getBook,
-  getBooks,
-  createBook,
-  deleteBook,
-  updateBook,
-} from "../services/book.service";
+import * as bookService from "../services/book.service";
 import { bodyLimit } from "hono/body-limit";
 import { sha256 } from "hono/utils/crypto";
 
 const bookRoute = new Hono<Environment>();
-
-export default bookRoute;
 
 bookRoute.get("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
@@ -38,9 +30,13 @@ bookRoute.get("/", async (c) => {
   const queries = c.req.query();
   const queryData = bookValidation.BookQuerySchema.safeParse(queries);
 
-  let books = await getBooks(session?.values.user_id, queryData.data, {
-    Bindings: c.env,
-  });
+  let books = await bookService.getBooks(
+    session?.values.user_id,
+    queryData.data,
+    {
+      Bindings: c.env,
+    }
+  );
 
   return c.json(books, httpStatus.OK as StatusCode);
 });
@@ -54,7 +50,7 @@ bookRoute.get("/:id", async (c) => {
     });
   }
   let book_id = c.req.param("id");
-  let book = await getBook(
+  let book = await bookService.getBook(
     book_id,
     { Bindings: c.env },
     session?.values.user_id
@@ -79,7 +75,7 @@ bookRoute.put("/:id", async (c) => {
   let book_id = c.req.param("id");
   const bodyParse = await c.req.json();
   const body = await bookValidation.updateBook.parseAsync(bodyParse);
-  const book = await updateBook(
+  const book = await bookService.updateBook(
     session.values.user_id,
     book_id,
     body,
@@ -104,7 +100,7 @@ bookRoute.delete("/:id", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
   let book_id = c.req.param("id");
-  await deleteBook(
+  await bookService.deleteBook(
     book_id,
     session.values.user_id,
     { Bindings: c.env },
@@ -130,7 +126,7 @@ bookRoute.post("/", async (c) => {
   }
   const bodyParse = await c.req.json();
   const body = await bookValidation.createBook.parseAsync(bodyParse);
-  const book = await createBook(body, session.values.user_id, {
+  const book = await bookService.createBook(body, session.values.user_id, {
     Bindings: c.env,
   });
   return c.json(book, httpStatus.CREATED as StatusCode);
@@ -189,3 +185,5 @@ bookRoute.post(
     return c.json({ cover_url: url }, httpStatus.CREATED as StatusCode);
   }
 );
+
+export default bookRoute;

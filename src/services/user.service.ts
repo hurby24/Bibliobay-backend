@@ -275,22 +275,24 @@ export const getUserProfile = async (
         ),
     ]);
 
+    const userData = {
+      id: user.id,
+      username: user.username,
+      bio: user.bio,
+      avatar: user.avatar,
+      banner: user.banner,
+      book_count: bookCount[0].count,
+      book_this_year: bookThisYear[0].count,
+      shelf_count: shelfCount[0].count,
+      friend_count: friendCount[0].count,
+      private: user.private,
+      supporter: user.supporter,
+      created_at: user.created_at,
+      friend: isFriend,
+    };
     if (!isCurrentUser && !isFriend && user.private) {
       return {
-        user: {
-          id: user.id,
-          username: user.username,
-          bio: user.bio,
-          avatar: user.avatar,
-          banner: user.banner,
-          book_count: bookCount[0].count,
-          book_this_year: bookThisYear[0].count,
-          shelf_count: shelfCount[0].count,
-          friend_count: friendCount[0].count,
-          private: user.private,
-          created_at: user.created_at,
-          friend: isFriend,
-        },
+        user: userData,
         books: { favorites: [], reading: [], read: [] },
         shelves: [],
       };
@@ -367,20 +369,7 @@ export const getUserProfile = async (
     );
 
     return {
-      user: {
-        id: user.id,
-        username: user.username,
-        bio: user.bio,
-        avatar: user.avatar,
-        banner: user.banner,
-        book_count: bookCount[0].count,
-        book_this_year: bookThisYear[0].count,
-        shelf_count: shelfCount[0].count,
-        friend_count: friendCount[0].count,
-        private: user.private,
-        created_at: user.created_at,
-        friend: isFriend,
-      },
+      user: userData,
       books: {
         favorites: favorite,
         reading: reading,

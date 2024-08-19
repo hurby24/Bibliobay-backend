@@ -5,19 +5,10 @@ import httpStatus from "http-status";
 import { getSignedCookie } from "hono/cookie";
 import * as sessionService from "../services/session.service";
 import * as friendValidation from "../validations/friend.validation";
-import {
-  getFriends,
-  removeFriend,
-  addFriend,
-  getFriendRequests,
-  handleFriendRequest,
-  deleteFriendRequest,
-} from "../services/friend.service";
+import * as friendService from "../services/friend.service";
 import { ApiError } from "../utils/ApiError";
 
 const friendRoute = new Hono<Environment>();
-
-export default friendRoute;
 
 friendRoute.get("/friends", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
@@ -35,7 +26,7 @@ friendRoute.get("/friends", async (c) => {
   }
   const { page, limit } = c.req.query();
 
-  const friends = await getFriends(
+  const friends = await friendService.getFriends(
     session.values.user_id,
     { Bindings: c.env },
     page,
@@ -62,7 +53,9 @@ friendRoute.delete("/friends/:id", async (c) => {
 
   const friend_id = c.req.param("id");
 
-  await removeFriend(session.values.user_id, friend_id, { Bindings: c.env });
+  await friendService.removeFriend(session.values.user_id, friend_id, {
+    Bindings: c.env,
+  });
 
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
@@ -84,7 +77,7 @@ friendRoute.get("/friend-requests", async (c) => {
   }
   const type = c.req.query("type");
 
-  const friendRequests = await getFriendRequests(
+  const friendRequests = await friendService.getFriendRequests(
     session.values.user_id,
     { Bindings: c.env },
     type
@@ -111,7 +104,9 @@ friendRoute.post("/friend-requests", async (c) => {
   const bodyParse = await c.req.json();
   const body = await friendValidation.addFriend.parseAsync(bodyParse);
 
-  await addFriend(session.values.user_id, body.user_id, { Bindings: c.env });
+  await friendService.addFriend(session.values.user_id, body.user_id, {
+    Bindings: c.env,
+  });
 
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
@@ -136,9 +131,14 @@ friendRoute.put("/friend-requests/:id", async (c) => {
   const body = await friendValidation.acceptFriend.parseAsync(bodyParse);
   const request_id = c.req.param("id");
 
-  await handleFriendRequest(session.values.user_id, request_id, body.accept, {
-    Bindings: c.env,
-  });
+  await friendService.handleFriendRequest(
+    session.values.user_id,
+    request_id,
+    body.accept,
+    {
+      Bindings: c.env,
+    }
+  );
 
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
@@ -161,10 +161,12 @@ friendRoute.delete("/friend-requests/:id", async (c) => {
 
   const request_id = c.req.param("id");
 
-  await deleteFriendRequest(session.values.user_id, request_id, {
+  await friendService.deleteFriendRequest(session.values.user_id, request_id, {
     Bindings: c.env,
   });
 
   c.status(httpStatus.NO_CONTENT as StatusCode);
   return c.body(null);
 });
+
+export default friendRoute;

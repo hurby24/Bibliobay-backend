@@ -5,11 +5,7 @@ import httpStatus from "http-status";
 import { getSignedCookie } from "hono/cookie";
 import * as sessionService from "../services/session.service";
 import { ApiError } from "../utils/ApiError";
-import {
-  createCheckoutURL,
-  handleEvent,
-  getSubscription,
-} from "../services/subscription.service";
+import * as subscriptionService from "../services/subscription.service";
 import { HMAC } from "oslo/crypto";
 
 const subscriptionRoute = new Hono<Environment>();
@@ -29,9 +25,12 @@ subscriptionRoute.get("/", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
 
-  const subscription = await getSubscription(session.values.user_id, {
-    Bindings: c.env,
-  });
+  const subscription = await subscriptionService.getSubscription(
+    session.values.user_id,
+    {
+      Bindings: c.env,
+    }
+  );
 
   return c.json(subscription, httpStatus.OK as StatusCode);
 });
@@ -51,9 +50,12 @@ subscriptionRoute.post("/", async (c) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
   }
 
-  const checkoutURL = await createCheckoutURL(session.values.user_id, {
-    Bindings: c.env,
-  });
+  const checkoutURL = await subscriptionService.createCheckoutURL(
+    session.values.user_id,
+    {
+      Bindings: c.env,
+    }
+  );
 
   return c.json({ checkoutURL }, httpStatus.CREATED as StatusCode);
 });
@@ -81,7 +83,9 @@ subscriptionRoute.post("/webhook", async (c) => {
 
   const event = await c.req.json();
 
-  const success = await handleEvent(event, { Bindings: c.env });
+  const success = await subscriptionService.handleEvent(event, {
+    Bindings: c.env,
+  });
 
   return c.json({ success: success }, httpStatus.OK as StatusCode);
 });

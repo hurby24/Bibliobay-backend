@@ -12,8 +12,6 @@ import { sha256 } from "hono/utils/crypto";
 
 const settingRoute = new Hono<Environment>();
 
-export default settingRoute;
-
 settingRoute.get("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
   if (sessionID == null) {
@@ -237,3 +235,5 @@ settingRoute.delete("/banner", async (c) => {
   });
   return c.json(updatedUser, httpStatus.OK as StatusCode);
 });
+
+export default settingRoute;
