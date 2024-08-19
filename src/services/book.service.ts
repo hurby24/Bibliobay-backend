@@ -128,13 +128,13 @@ export const getBooks = async (
       )`.as("genres"),
       })
       .from(books)
-      .where(eq(books.user_id, user.id))
       .limit(20)
       .offset(0)
       .$dynamic();
 
     result.where(
       and(
+        eq(books.user_id, user.id),
         !isCurrentUser ? eq(books.private, false) : undefined,
         queries?.state === "read" ? eq(books.finished, true) : undefined,
         queries?.state === "reading" ? eq(books.finished, false) : undefined,

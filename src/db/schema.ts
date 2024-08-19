@@ -28,7 +28,9 @@ export const users = sqliteTable(
       .notNull()
       .default(new Date().toISOString()),
     updated_at: text("update_at").default(sql`NULL`),
-    created_at: text("created_at").notNull().default(new Date().toISOString()),
+    created_at: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => {
     return {
@@ -57,7 +59,9 @@ export const books = sqliteTable(
     private: integer("private", { mode: "boolean" }).notNull().default(false),
     finished_at: text("finished_at").default(sql`NULL`),
     updated_at: text("update_at").default(sql`NULL`),
-    created_at: text("created_at").notNull().default(new Date().toISOString()),
+    created_at: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => {
     return {
@@ -79,7 +83,9 @@ export const shelves = sqliteTable(
     description: text("description"),
     private: integer("private", { mode: "boolean" }).notNull().default(false),
     updated_at: text("update_at").default(sql`NULL`),
-    created_at: text("created_at").notNull().default(new Date().toISOString()),
+    created_at: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => {
     return {
@@ -164,7 +170,9 @@ export const goals = sqliteTable("goals", {
   target: integer("target").notNull(),
   time: text("time").notNull(),
   updated_at: text("update_at").default(sql`NULL`),
-  created_at: text("created_at").notNull().default(new Date().toISOString()),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const friends = sqliteTable("friends", {
@@ -175,7 +183,9 @@ export const friends = sqliteTable("friends", {
   friend_id: text("friend_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  created_at: text("created_at").notNull().default(new Date().toISOString()),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const friend_requests = sqliteTable("friend_requests", {
@@ -186,7 +196,9 @@ export const friend_requests = sqliteTable("friend_requests", {
   receiver_id: text("receiver_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  created_at: text("created_at").notNull().default(new Date().toISOString()),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const subscriptions = sqliteTable("subscriptions", {
@@ -203,5 +215,7 @@ export const subscriptions = sqliteTable("subscriptions", {
   card_brand: text("card_brand"),
   card_last_four: text("card_last_four"),
   updated_at: text("update_at").default(sql`NULL`),
-  created_at: text("created_at").notNull().default(new Date().toISOString()),
+  created_at: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });

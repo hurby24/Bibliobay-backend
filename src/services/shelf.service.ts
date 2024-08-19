@@ -134,12 +134,16 @@ export const getShelves = async (
     )`.as("book_count"),
       })
       .from(shelves)
-      .where(eq(shelves.user_id, user.id))
       .limit(20)
       .offset(0)
       .$dynamic();
 
-    result.where(!isCurrentUser ? eq(shelves.private, false) : undefined);
+    result.where(
+      and(
+        eq(shelves.user_id, user.id),
+        !isCurrentUser ? eq(shelves.private, false) : undefined
+      )
+    );
 
     if (queries?.sort) {
       switch (queries.sort) {

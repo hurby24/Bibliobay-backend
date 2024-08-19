@@ -317,28 +317,52 @@ export const getUserProfile = async (
     ) {
       if (status === "favorites") {
         if (privateBooks) {
-          return qb.where(eq(books.favorite, true)).limit(5);
+          return qb
+            .where(and(eq(books.favorite, true), eq(books.user_id, user.id)))
+            .limit(5);
         } else {
           return qb
-            .where(and(eq(books.favorite, true), eq(books.private, false)))
+            .where(
+              and(
+                eq(books.favorite, true),
+                eq(books.private, false),
+                eq(books.user_id, user.id)
+              )
+            )
             .limit(5);
         }
       }
       if (status === "reading") {
         if (privateBooks) {
-          return qb.where(eq(books.finished, false)).limit(5);
+          return qb
+            .where(and(eq(books.finished, false), eq(books.user_id, user.id)))
+            .limit(5);
         } else {
           return qb
-            .where(and(eq(books.finished, false), eq(books.private, false)))
+            .where(
+              and(
+                eq(books.finished, false),
+                eq(books.private, false),
+                eq(books.user_id, user.id)
+              )
+            )
             .limit(5);
         }
       }
       if (status === "read") {
         if (privateBooks) {
-          return qb.where(eq(books.finished, true)).limit(5);
+          return qb
+            .where(and(eq(books.finished, true), eq(books.user_id, user.id)))
+            .limit(5);
         } else {
           return qb
-            .where(and(eq(books.finished, true), eq(books.private, false)))
+            .where(
+              and(
+                eq(books.finished, true),
+                eq(books.private, false),
+                eq(books.user_id, user.id)
+              )
+            )
             .limit(5);
         }
       }
@@ -359,7 +383,9 @@ export const getUserProfile = async (
     let favorite = (await db.run(userBooks)).results.map(convertToBoolean);
 
     if (!isCurrentUser && !isFriend) {
-      userShelves.where(eq(shelves.private, false));
+      userShelves.where(
+        and(eq(shelves.private, false), eq(shelves.user_id, user.id))
+      );
     }
     let filteredShelves = (await db.run(userShelves)).results.map(
       (shelf: any) => ({
