@@ -18,48 +18,75 @@ export const getFriends = async (
   const db = drizzle(Env.Bindings.DB);
 
   try {
-    let friendsList: any;
-
-    const qb = new QueryBuilder();
+    let userQuery;
     if (username !== "") {
-      friendsList = qb
-        .select({
-          id: users.id,
-          username: users.username,
-          avatar: users.avatar,
-        })
-        .from(friends)
-        .innerJoin(
-          users,
-          or(
-            and(eq(friends.user_id, users.id), eq(friends.friend_id, users.id)),
-            and(eq(friends.friend_id, users.id), eq(friends.user_id, users.id))
-          )
-        )
-        .where(eq(users.username, username))
-        .$dynamic();
+      userQuery = db.select().from(users).where(eq(users.username, username));
     } else {
-      friendsList = qb
-        .select({
-          id: users.id,
-          username: users.username,
-          avatar: users.avatar,
-        })
-        .from(friends)
-        .innerJoin(
-          users,
-          or(
-            and(eq(friends.user_id, user_id), eq(friends.friend_id, users.id)),
-            and(eq(friends.friend_id, user_id), eq(friends.user_id, users.id))
-          )
-        )
-        .where(ne(users.id, user_id))
-        .$dynamic();
+      userQuery = db.select().from(users).where(eq(users.id, user_id));
+    }
+    const user = (await userQuery)[0];
+
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, "User not found");
     }
 
-    withPagination(friendsList, 25, page, limit);
-    const result = (await db.run(friendsList)).results;
-    return result;
+    let isCurrentUser = false;
+    if (user_id) {
+      isCurrentUser = user.id === user_id;
+    }
+
+    let isFriend = false;
+    if (!isCurrentUser && user_id) {
+      const friend = await db
+        .select()
+        .from(friends)
+        .where(
+          or(
+            and(eq(friends.user_id, user_id), eq(friends.friend_id, user.id)),
+            and(eq(friends.user_id, user.id), eq(friends.friend_id, user_id))
+          )
+        );
+      isFriend = friend.length > 0;
+    }
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      banner: user.banner,
+      private: user.private,
+      supporter: user.supporter,
+      friend: isFriend,
+    };
+    if (!isCurrentUser && !isFriend && user.private) {
+      return {
+        user: userData,
+        friends: [],
+      };
+    }
+
+    const qb = new QueryBuilder();
+    const result = qb
+      .select({
+        id: users.id,
+        username: users.username,
+        avatar: users.avatar,
+      })
+      .from(friends)
+      .innerJoin(
+        users,
+        or(eq(friends.user_id, user.id), eq(friends.friend_id, user.id))
+      )
+      .where(ne(users.id, user.id))
+      .$dynamic();
+
+    withPagination(result, 25, page, limit);
+    const friendsList = (await db.run(result)).results;
+
+    return {
+      user: userData,
+      friends: friendsList,
+    };
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
