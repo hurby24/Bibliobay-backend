@@ -32,8 +32,8 @@ export const getFriends = async (
         .innerJoin(
           users,
           or(
-            and(eq(friends.user_id, users.id), eq(users.username, username)),
-            and(eq(friends.friend_id, users.id), eq(users.username, username))
+            and(eq(friends.user_id, users.id), eq(friends.friend_id, users.id)),
+            and(eq(friends.friend_id, users.id), eq(friends.user_id, users.id))
           )
         )
         .where(eq(users.username, username))
@@ -56,7 +56,7 @@ export const getFriends = async (
         .where(ne(users.id, user_id))
         .$dynamic();
     }
-    console.log(friendsList);
+
     withPagination(friendsList, 25, page, limit);
     const result = (await db.run(friendsList)).results;
     return result;

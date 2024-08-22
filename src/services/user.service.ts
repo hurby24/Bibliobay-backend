@@ -73,7 +73,6 @@ export const loginUser = async (email: string, Env: Environment) => {
 };
 
 export const oauthLink = async (oauthData: any, Env: Environment) => {
-  let result;
   const db = drizzle(Env.Bindings.DB);
 
   try {
