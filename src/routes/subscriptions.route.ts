@@ -7,87 +7,109 @@ import * as sessionService from "../services/session.service";
 import { ApiError } from "../utils/ApiError";
 import * as subscriptionService from "../services/subscription.service";
 import { HMAC } from "oslo/crypto";
+import { cache } from "hono/cache";
 
 const subscriptionRoute = new Hono<Environment>();
 
-subscriptionRoute.get("/", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-
-  const subscription = await subscriptionService.getSubscription(
-    session.values.user_id,
-    {
-      Bindings: c.env,
+subscriptionRoute.get(
+  "/",
+  cache({
+    cacheName: "bibliobay-subscriptions",
+    cacheControl: "private, max-age=0, must-revalidate",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
     }
-  );
-
-  return c.json(subscription, httpStatus.OK as StatusCode);
-});
-
-subscriptionRoute.post("/", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-
-  const checkoutURL = await subscriptionService.createCheckoutURL(
-    session.values.user_id,
-    {
+    const session = await sessionService.validSession(sessionID.toString(), {
       Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
     }
-  );
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
 
-  return c.json({ checkoutURL }, httpStatus.CREATED as StatusCode);
-});
+    const subscription = await subscriptionService.getSubscription(
+      session.values.user_id,
+      {
+        Bindings: c.env,
+      }
+    );
 
-subscriptionRoute.post("/webhook", async (c) => {
-  const signature = c.req.header("X-Signature");
-  if (!signature) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Missing signature header");
+    return c.json(subscription, httpStatus.OK as StatusCode);
   }
-  const payload = await c.req.text();
-  const secret = c.env.WEBHOOK_SECRET;
+);
 
-  const hs256 = new HMAC("SHA-256");
-  const secretData = new TextEncoder().encode(secret);
-  const payloadData = new TextEncoder().encode(payload);
-  const hash = await hs256.sign(secretData, payloadData);
+subscriptionRoute.post(
+  "/",
+  cache({
+    cacheName: "bibliobay-subscriptions",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
 
-  const hexHash = Array.prototype.map
-    .call(new Uint8Array(hash), (x) => x.toString(16).padStart(2, "0"))
-    .join("");
+    const checkoutURL = await subscriptionService.createCheckoutURL(
+      session.values.user_id,
+      {
+        Bindings: c.env,
+      }
+    );
 
-  if (hexHash !== signature) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid signature");
+    return c.json({ checkoutURL }, httpStatus.CREATED as StatusCode);
   }
+);
 
-  const event = await c.req.json();
+subscriptionRoute.post(
+  "/webhook",
+  cache({
+    cacheName: "bibliobay-subscriptions",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const signature = c.req.header("X-Signature");
+    if (!signature) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Missing signature header");
+    }
+    const payload = await c.req.text();
+    const secret = c.env.WEBHOOK_SECRET;
 
-  const success = await subscriptionService.handleEvent(event, {
-    Bindings: c.env,
-  });
+    const hs256 = new HMAC("SHA-256");
+    const secretData = new TextEncoder().encode(secret);
+    const payloadData = new TextEncoder().encode(payload);
+    const hash = await hs256.sign(secretData, payloadData);
 
-  return c.json({ success: success }, httpStatus.OK as StatusCode);
-});
+    const hexHash = Array.prototype.map
+      .call(new Uint8Array(hash), (x) => x.toString(16).padStart(2, "0"))
+      .join("");
+
+    if (hexHash !== signature) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid signature");
+    }
+
+    const event = await c.req.json();
+
+    const success = await subscriptionService.handleEvent(event, {
+      Bindings: c.env,
+    });
+
+    return c.json({ success: success }, httpStatus.OK as StatusCode);
+  }
+);
 
 export default subscriptionRoute;

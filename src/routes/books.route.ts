@@ -8,132 +8,172 @@ import * as bookValidation from "../validations/book.validation";
 import { ApiError } from "../utils/ApiError";
 import * as bookService from "../services/book.service";
 import { bodyLimit } from "hono/body-limit";
+import { cache } from "hono/cache";
 import { sha256 } from "hono/utils/crypto";
 
 const bookRoute = new Hono<Environment>();
 
-bookRoute.get("/", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-
-  const queries = c.req.query();
-  const queryData = bookValidation.BookQuerySchema.safeParse(queries);
-
-  let books = await bookService.getBooks(
-    session?.values.user_id,
-    queryData.data,
-    {
-      Bindings: c.env,
+bookRoute.get(
+  "/",
+  cache({
+    cacheName: "bibliobay-books",
+    cacheControl: "private, max-age=0, must-revalidate",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
     }
-  );
-
-  return c.json(books, httpStatus.OK as StatusCode);
-});
-
-bookRoute.get("/:id", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  let session;
-  if (sessionID != null) {
-    session = await sessionService.validSession(sessionID.toString(), {
+    const session = await sessionService.validSession(sessionID.toString(), {
       Bindings: c.env,
     });
-  }
-  let book_id = c.req.param("id");
-  let book = await bookService.getBook(
-    book_id,
-    { Bindings: c.env },
-    session?.values.user_id
-  );
-  return c.json(book, httpStatus.OK as StatusCode);
-});
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
 
-bookRoute.put("/:id", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-  let book_id = c.req.param("id");
-  const bodyParse = await c.req.json();
-  const body = await bookValidation.updateBook.parseAsync(bodyParse);
-  const book = await bookService.updateBook(
-    session.values.user_id,
-    book_id,
-    body,
-    { Bindings: c.env },
-    c.env.IMAGES
-  );
-  return c.json(book, httpStatus.OK as StatusCode);
-});
+    const queries = c.req.query();
+    const queryData = bookValidation.BookQuerySchema.safeParse(queries);
 
-bookRoute.delete("/:id", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-  let book_id = c.req.param("id");
-  await bookService.deleteBook(
-    book_id,
-    session.values.user_id,
-    { Bindings: c.env },
-    c.env.IMAGES
-  );
-  c.status(httpStatus.NO_CONTENT as StatusCode);
-  return c.body(null);
-});
+    let books = await bookService.getBooks(
+      session?.values.user_id,
+      queryData.data,
+      {
+        Bindings: c.env,
+      }
+    );
 
-bookRoute.post("/", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    return c.json(books, httpStatus.OK as StatusCode);
   }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+);
+
+bookRoute.get(
+  "/:id",
+  cache({
+    cacheName: "bibliobay-books",
+    cacheControl: "public, max-age=60",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    let session;
+    if (sessionID != null) {
+      session = await sessionService.validSession(sessionID.toString(), {
+        Bindings: c.env,
+      });
+    }
+    let book_id = c.req.param("id");
+    let book = await bookService.getBook(
+      book_id,
+      { Bindings: c.env },
+      session?.values.user_id
+    );
+    return c.json(book, httpStatus.OK as StatusCode);
   }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+);
+
+bookRoute.put(
+  "/:id",
+  cache({
+    cacheName: "bibliobay-books",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    let book_id = c.req.param("id");
+    const bodyParse = await c.req.json();
+    const body = await bookValidation.updateBook.parseAsync(bodyParse);
+    const book = await bookService.updateBook(
+      session.values.user_id,
+      book_id,
+      body,
+      { Bindings: c.env },
+      c.env.IMAGES
+    );
+    return c.json(book, httpStatus.OK as StatusCode);
   }
-  const bodyParse = await c.req.json();
-  const body = await bookValidation.createBook.parseAsync(bodyParse);
-  const book = await bookService.createBook(body, session.values.user_id, {
-    Bindings: c.env,
-  });
-  return c.json(book, httpStatus.CREATED as StatusCode);
-});
+);
+
+bookRoute.delete(
+  "/:id",
+  cache({
+    cacheName: "bibliobay-books",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    let book_id = c.req.param("id");
+    await bookService.deleteBook(
+      book_id,
+      session.values.user_id,
+      { Bindings: c.env },
+      c.env.IMAGES
+    );
+    c.status(httpStatus.NO_CONTENT as StatusCode);
+    return c.body(null);
+  }
+);
+
+bookRoute.post(
+  "/",
+  cache({
+    cacheName: "bibliobay-books",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    const bodyParse = await c.req.json();
+    const body = await bookValidation.createBook.parseAsync(bodyParse);
+    const book = await bookService.createBook(body, session.values.user_id, {
+      Bindings: c.env,
+    });
+    return c.json(book, httpStatus.CREATED as StatusCode);
+  }
+);
 
 bookRoute.post(
   "/cover",
+  cache({
+    cacheName: "bibliobay-books",
+    cacheControl: "no-store",
+  }),
   bodyLimit({
     maxSize: 1024 * 1024,
     onError: (c) => {

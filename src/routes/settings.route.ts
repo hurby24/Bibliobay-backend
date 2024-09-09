@@ -9,54 +9,73 @@ import { getUser, updateUser } from "../services/user.service";
 import { userUpdate, allowedImageTypes } from "../validations/user.validation";
 import { bodyLimit } from "hono/body-limit";
 import { sha256 } from "hono/utils/crypto";
+import { cache } from "hono/cache";
 
 const settingRoute = new Hono<Environment>();
 
-settingRoute.get("/", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-  const user = await getUser(session.values.user_id, { Bindings: c.env });
+settingRoute.get(
+  "/",
+  cache({
+    cacheName: "bibliobay-settings",
+    cacheControl: "max-age=0, must-revalidate",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    const user = await getUser(session.values.user_id, { Bindings: c.env });
 
-  return c.json(user, httpStatus.OK as StatusCode);
-});
-
-settingRoute.put("/", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    return c.json(user, httpStatus.OK as StatusCode);
   }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-  const bodyParse = await c.req.json();
-  const body = await userUpdate.parseAsync(bodyParse);
+);
 
-  const user = await updateUser(session.values.user_id, body, {
-    Bindings: c.env,
-  });
+settingRoute.put(
+  "/",
+  cache({
+    cacheName: "bibliobay-settings",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    const bodyParse = await c.req.json();
+    const body = await userUpdate.parseAsync(bodyParse);
 
-  return c.json(user, httpStatus.OK as StatusCode);
-});
+    const user = await updateUser(session.values.user_id, body, {
+      Bindings: c.env,
+    });
+
+    return c.json(user, httpStatus.OK as StatusCode);
+  }
+);
 
 settingRoute.put(
   "/avatar",
+  cache({
+    cacheName: "bibliobay-settings",
+    cacheControl: "no-store",
+  }),
   bodyLimit({
     maxSize: 1024 * 1024,
     onError: (c) => {
@@ -115,6 +134,10 @@ settingRoute.put(
 
 settingRoute.put(
   "/banner",
+  cache({
+    cacheName: "bibliobay-settings",
+    cacheControl: "no-store",
+  }),
   bodyLimit({
     maxSize: 1024 * 1024,
     onError: (c) => {
@@ -171,69 +194,83 @@ settingRoute.put(
   }
 );
 
-settingRoute.delete("/avatar", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+settingRoute.delete(
+  "/avatar",
+  cache({
+    cacheName: "bibliobay-settings",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    const user = await getUser(session.values.user_id, { Bindings: c.env });
+    if (
+      user.avatar ==
+      "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random"
+    ) {
+      return c.json(user, httpStatus.OK as StatusCode);
+    }
+    const updatebody = {
+      avatar:
+        "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random",
+    };
+    const deleteUrl: string = user.avatar.split("/").pop() as string;
+    await c.env.IMAGES.delete(deleteUrl);
+    const updatedUser = await updateUser(session.values.user_id, updatebody, {
+      Bindings: c.env,
+    });
+    return c.json(updatedUser, httpStatus.OK as StatusCode);
   }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-  const user = await getUser(session.values.user_id, { Bindings: c.env });
-  if (
-    user.avatar ==
-    "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random"
-  ) {
-    return c.json(user, httpStatus.OK as StatusCode);
-  }
-  const updatebody = {
-    avatar:
-      "https://ui-avatars.com/api/?name=${user.username}&size=300&bold=true&background=random",
-  };
-  const deleteUrl: string = user.avatar.split("/").pop() as string;
-  await c.env.IMAGES.delete(deleteUrl);
-  const updatedUser = await updateUser(session.values.user_id, updatebody, {
-    Bindings: c.env,
-  });
-  return c.json(updatedUser, httpStatus.OK as StatusCode);
-});
+);
 
-settingRoute.delete("/banner", async (c) => {
-  const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
-  if (sessionID == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+settingRoute.delete(
+  "/banner",
+  cache({
+    cacheName: "bibliobay-settings",
+    cacheControl: "no-store",
+  }),
+  async (c) => {
+    const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
+    if (sessionID == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    const session = await sessionService.validSession(sessionID.toString(), {
+      Bindings: c.env,
+    });
+    if (session == null) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
+    }
+    if (!session.values.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
+    }
+    const user = await getUser(session.values.user_id, { Bindings: c.env });
+    if (!user.banner) {
+      return c.json(user, httpStatus.OK as StatusCode);
+    }
+    const updatebody = {
+      banner: null,
+    };
+    if (!user.banner) {
+      return c.json(user, httpStatus.OK as StatusCode);
+    }
+    const deleteUrl: string = user.banner.split("/").pop() as string;
+    await c.env.IMAGES.delete(deleteUrl);
+    const updatedUser = await updateUser(session.values.user_id, updatebody, {
+      Bindings: c.env,
+    });
+    return c.json(updatedUser, httpStatus.OK as StatusCode);
   }
-  const session = await sessionService.validSession(sessionID.toString(), {
-    Bindings: c.env,
-  });
-  if (session == null) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized");
-  }
-  if (!session.values.email_verified) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User is not verified.");
-  }
-  const user = await getUser(session.values.user_id, { Bindings: c.env });
-  if (!user.banner) {
-    return c.json(user, httpStatus.OK as StatusCode);
-  }
-  const updatebody = {
-    banner: null,
-  };
-  if (!user.banner) {
-    return c.json(user, httpStatus.OK as StatusCode);
-  }
-  const deleteUrl: string = user.banner.split("/").pop() as string;
-  await c.env.IMAGES.delete(deleteUrl);
-  const updatedUser = await updateUser(session.values.user_id, updatebody, {
-    Bindings: c.env,
-  });
-  return c.json(updatedUser, httpStatus.OK as StatusCode);
-});
+);
 
 export default settingRoute;

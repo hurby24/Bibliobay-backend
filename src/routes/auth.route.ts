@@ -21,8 +21,17 @@ import {
 import { createCsrfToken } from "../utils/csrftoken";
 import { sendOtpEmail } from "../services/email.service";
 import { formatUserAgent, validateCaptcha } from "../utils/utils";
+import { cache } from "hono/cache";
 
 const authRoute = new Hono<Environment>();
+
+authRoute.all(
+  "*",
+  cache({
+    cacheName: "bibliobay-auth",
+    cacheControl: "no-store",
+  })
+);
 
 authRoute.post("/signup", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");

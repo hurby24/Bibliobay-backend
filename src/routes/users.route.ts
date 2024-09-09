@@ -11,8 +11,17 @@ import { getShelves } from "../services/shelf.service";
 import { getFriends } from "../services/friend.service";
 import { BookQuerySchema } from "../validations/book.validation";
 import { ShelfQuerySchema } from "../validations/shelf.validation";
+import { cache } from "hono/cache";
 
 const userRoute = new Hono<Environment>();
+
+userRoute.all(
+  "*",
+  cache({
+    cacheName: "bibliobay-user",
+    cacheControl: "public, max-age=60",
+  })
+);
 
 userRoute.get("/", async (c) => {
   const sessionID = await getSignedCookie(c, c.env.HMACsecret, "SID");
